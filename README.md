@@ -60,6 +60,9 @@ Settings → Model: Claude Opus 5.5 (best quality, default), Sonnet 5.5 (faster)
 
 ## Windows Server notes
 
+**Full step-by-step guide: [WINDOWS_SERVER_SETUP.md](WINDOWS_SERVER_SETUP.md)**
+
+
 - Turn on audio: `Set-Service Audiosrv -StartupType Automatic; Start-Service Audiosrv` (PowerShell as admin).
 - Over Remote Desktop, enable *Remote audio → Play on this computer* on the client side, so call audio is sent
   through the RDP device the app captures. Test with the 🔊 meter on the Live tab.
