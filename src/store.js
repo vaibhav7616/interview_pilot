@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = {
   hideFromScreenShare: true,
   hideFromTaskbar: false,
   opacity: 0.96,
+  theme: 'system', // system | dark | light
   profile: { name: '', role: '', company: '', resume: '', jobDescription: '', instructions: '' },
 };
 
