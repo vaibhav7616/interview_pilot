@@ -3,14 +3,48 @@
 
 // ---------------------------------------------------------------- helpers
 const $ = (id) => document.getElementById(id);
+const $$ = (sel) => document.querySelectorAll(sel);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const md = (text) => DOMPurify.sanitize(marked.parse(text || '', { gfm: true, breaks: true }));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const icon = (name) => `<svg><use href="#i-${name}"/></svg>`;
 const clock = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const fmtDate = (t) => new Date(t).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-const MODE_LABEL = { interview: 'Interview', meeting: 'Meeting', mock: 'Practice' };
+const fmtDuration = (ms) => {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+};
+const MODE_LABEL = { interview: 'Interview', meeting: 'Regular call', mock: 'Mock interview' };
 const MODE_ICON = { interview: 'briefcase', meeting: 'users', mock: 'target' };
+const KIND_LABEL = { answer: 'Answer', chat: 'Chat', screenshot: 'Screenshot', mock: 'Interviewer' };
+
+// Options shared by every <select data-setting="…"> (setup page, settings page, overlay menu).
+// Languages: all accepted by Deepgram nova-3 (verified against the API).
+const LANGUAGES = [
+  ['multi', 'Auto-detect (multilingual)'], ['en', 'English'], ['en-US', 'English (US)'], ['en-GB', 'English (UK)'],
+  ['en-IN', 'English (India)'], ['en-AU', 'English (Australia)'], ['hi', 'Hindi'], ['mr', 'Marathi'], ['bn', 'Bengali'],
+  ['ta', 'Tamil'], ['te', 'Telugu'], ['kn', 'Kannada'], ['ml', 'Malayalam'], ['ur', 'Urdu'], ['ar', 'Arabic'],
+  ['bg', 'Bulgarian'], ['ca', 'Catalan'], ['zh-CN', 'Chinese (Simplified)'], ['zh-TW', 'Chinese (Traditional)'],
+  ['hr', 'Croatian'], ['cs', 'Czech'], ['da', 'Danish'], ['nl', 'Dutch'], ['et', 'Estonian'], ['tl', 'Filipino'],
+  ['fi', 'Finnish'], ['fr', 'French'], ['fr-CA', 'French (Canada)'], ['de', 'German'], ['de-CH', 'German (Switzerland)'],
+  ['el', 'Greek'], ['he', 'Hebrew'], ['hu', 'Hungarian'], ['id', 'Indonesian'], ['it', 'Italian'], ['ja', 'Japanese'],
+  ['ko', 'Korean'], ['lv', 'Latvian'], ['lt', 'Lithuanian'], ['ms', 'Malay'], ['no', 'Norwegian'], ['fa', 'Persian'],
+  ['pl', 'Polish'], ['pt', 'Portuguese'], ['pt-BR', 'Portuguese (Brazil)'], ['ro', 'Romanian'], ['ru', 'Russian'],
+  ['sr', 'Serbian'], ['sk', 'Slovak'], ['sl', 'Slovenian'], ['es', 'Spanish'], ['es-419', 'Spanish (Latin America)'],
+  ['sv', 'Swedish'], ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['vi', 'Vietnamese'],
+];
+const MODELS = [
+  ['Google Gemini (free tier)', [['gemini-flash-lite-latest', 'Gemini Flash-Lite (fastest)'], ['gemini-flash-latest', 'Gemini Flash']]],
+  ['Anthropic Claude', [['claude-opus-5-5', 'Claude Opus 5.5'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5'], ['claude-haiku-5-5', 'Claude Haiku 5.5']]],
+];
+const STYLES = [
+  ['bullets', 'Bullet points'],
+  ['spoken', 'Script + bullets'],
+  ['detailed', 'Full script'],
+];
 
 let settings = null;
 let mode = 'interview'; // interview | meeting | mock
@@ -19,23 +53,24 @@ let mode = 'interview'; // interview | meeting | mock
 function toast(message, kind = 'success', ms = 3200) {
   const t = $('toast');
   $('toastText').textContent = message;
-  $('toastIcon').innerHTML = `<use href="#i-${kind === 'error' ? 'alert' : kind === 'info' ? 'alert' : 'check'}"/>`;
+  $('toastIcon').innerHTML = `<use href="#i-${kind === 'error' || kind === 'info' ? 'alert' : 'check'}"/>`;
   t.className = `toast ${kind}`;
   clearTimeout(toast.t);
   toast.t = setTimeout(() => t.classList.add('hidden'), kind === 'error' ? Math.max(ms, 6000) : ms);
 }
-// kept for compatibility with older call sites
-const showBanner = (message, kind = 'error', ms) => toast(message, kind === 'info' ? 'info' : 'error', ms || undefined);
 
 function setStatus(state, text) {
   const s = $('status');
   s.className = 'status' + (state === 'on' ? ' live' : state === 'warn' ? ' connecting' : state === 'err' ? ' error' : '');
-  $('statusText').textContent = text || { on: 'Listening', warn: 'Connecting', err: 'Connection problem', off: 'Ready' }[state] || 'Ready';
+  const label = text || { on: 'Listening', warn: 'Connecting', err: 'Connection problem', off: 'Ready' }[state] || 'Ready';
+  $('statusText').textContent = label;
+  $('ovTimer').title = label;
+  $('ovTimer').style.color = state === 'err' ? '#ff8a8d' : state === 'warn' ? '#f0b45a' : '';
 }
 
 function switchView(name) {
-  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${name}`));
-  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
+  $$('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${name}`));
+  $$('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'history') renderHistoryList();
 }
 
@@ -44,11 +79,87 @@ function applyTheme(theme) {
   else delete document.documentElement.dataset.theme;
 }
 
+// Key needed for the selected model: Gemini models use the Gemini key, Claude models the Anthropic key.
+function aiKeyMissing(s = settings) {
+  if (!s) return true;
+  return String(s.model || '').startsWith('gemini') ? !s.geminiKey : !s.anthropicKey;
+}
+
 function updateKeysCallout() {
-  $('keysCallout').classList.toggle('hidden', !!(settings && settings.anthropicKey && settings.deepgramKey));
+  $('keysCallout').classList.toggle('hidden', !!(settings && !aiKeyMissing() && settings.deepgramKey));
+}
+
+// ---------------------------------------------------------------- window layout (dashboard / overlay)
+let windowMode = 'dashboard';
+let expanded = false;
+
+function enterOverlay() {
+  windowMode = 'overlay';
+  document.body.className = 'mode-overlay';
+  api.setWindowMode('overlay');
+  $('liveBanner').classList.add('hidden');
+  requestAnimationFrame(fitOverlay);
+}
+
+function enterDashboard() {
+  windowMode = 'dashboard';
+  document.body.className = 'mode-dashboard';
+  api.setWindowMode('dashboard');
+  $('liveBanner').classList.toggle('hidden', !sess);
+}
+
+// The overlay window is exactly as tall as its content, so empty space never blocks clicks.
+function fitOverlay() {
+  if (windowMode !== 'overlay') return;
+  const h = Math.ceil(document.body.getBoundingClientRect().height);
+  const width = expanded ? 1000 : 720;
+  if (h === fitOverlay.h && width === fitOverlay.w) return; // only resize when something changed
+  fitOverlay.h = h;
+  fitOverlay.w = width;
+  api.fitWindow({ width, height: h });
+}
+
+function setExpanded(on) {
+  expanded = on;
+  const max = on ? Math.max(420, (window.screen.availHeight || 900) - 300) : 420;
+  $('overlay').style.setProperty('--ov-ans-max', `${max}px`);
+  $('oExpand').innerHTML = icon(on ? 'collapse' : 'expand');
+  $('oExpand').title = on ? 'Shrink' : 'Expand';
+  fitOverlay();
 }
 
 // ---------------------------------------------------------------- settings
+function fillSelect(sel, key) {
+  if (key === 'language') sel.innerHTML = LANGUAGES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+  else if (key === 'model') {
+    sel.innerHTML = MODELS.map(([g, opts]) => `<optgroup label="${esc(g)}">${opts.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}</optgroup>`).join('');
+  } else if (key === 'answerStyle') sel.innerHTML = STYLES.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+}
+
+function syncSettingControls() {
+  $$('[data-setting]').forEach((el) => {
+    const v = settings[el.dataset.setting];
+    if (v !== undefined) el.value = v;
+  });
+  const op = settings.opacity;
+  $('sOpacity').value = op;
+  $('ovOpacity').value = op;
+  $('opacityValue').textContent = `${Math.round(op * 100)}%`;
+}
+
+async function saveSetting(key, value) {
+  settings = await api.saveSettings({ [key]: value });
+  syncSettingControls();
+  updateKeysCallout();
+  // Language is fixed per transcription stream, so reconnect with the new one.
+  if (key === 'language' && sess && mode !== 'mock') {
+    await api.sttStart();
+    toast(`Language: ${(LANGUAGES.find(([v]) => v === value) || [, value])[1]}`, 'info', 1800);
+  } else {
+    toast('Saved', 'success', 1200);
+  }
+}
+
 async function loadSettingsIntoForms() {
   settings = await api.getSettings();
   const p = settings.profile;
@@ -57,21 +168,19 @@ async function loadSettingsIntoForms() {
   $('pCompany').value = p.company;
   $('pResume').value = p.resume;
   $('pJD').value = p.jobDescription;
+  $('pDocs').value = p.documents || '';
   $('pInstr').value = p.instructions;
   updateInstrCount();
 
+  $('sGemini').value = settings.geminiKey || '';
   $('sAnthropic').value = settings.anthropicKey;
   $('sDeepgram').value = settings.deepgramKey;
-  $('sModel').value = settings.model;
-  $('sEffort').value = settings.effort;
-  $('sStyle').value = settings.answerStyle;
-  $('sLang').value = settings.language;
   $('sHideShare').checked = settings.hideFromScreenShare;
   $('sHideTaskbar').checked = settings.hideFromTaskbar;
-  $('sOpacity').value = settings.opacity;
-  $('opacityValue').textContent = `${Math.round(settings.opacity * 100)}%`;
   $('sTheme').value = settings.theme || 'system';
   $('autoToggle').checked = settings.autoAnswer;
+  syncSettingControls();
+  updateAutoBadge();
   applyTheme(settings.theme);
   updateKeysCallout();
 }
@@ -87,25 +196,27 @@ function profileFromForm() {
     company: $('pCompany').value.trim(),
     resume: $('pResume').value.trim(),
     jobDescription: $('pJD').value.trim(),
+    documents: $('pDocs').value.trim(),
     instructions: $('pInstr').value.slice(0, 20000),
   };
 }
 
-async function saveSettingsFromForm() {
-  settings = await api.saveSettings({
-    anthropicKey: $('sAnthropic').value.trim(),
-    deepgramKey: $('sDeepgram').value.trim(),
-    model: $('sModel').value,
-    effort: $('sEffort').value,
-    answerStyle: $('sStyle').value,
-    language: $('sLang').value,
-    hideFromScreenShare: $('sHideShare').checked,
-    hideFromTaskbar: $('sHideTaskbar').checked,
-    opacity: Number($('sOpacity').value),
-    theme: $('sTheme').value,
-  });
-  applyTheme(settings.theme);
-  updateKeysCallout();
+let saveTimer = null;
+function autosaveFields(message = 'Settings saved') {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    settings = await api.saveSettings({
+      geminiKey: $('sGemini').value.trim(),
+      anthropicKey: $('sAnthropic').value.trim(),
+      deepgramKey: $('sDeepgram').value.trim(),
+      hideFromScreenShare: $('sHideShare').checked,
+      hideFromTaskbar: $('sHideTaskbar').checked,
+      theme: $('sTheme').value,
+    });
+    applyTheme(settings.theme);
+    updateKeysCallout();
+    toast(message, 'success', 1600);
+  }, 350);
 }
 
 // ---------------------------------------------------------------- session state
@@ -125,21 +236,18 @@ const live = {
   mockSilenceTimer: null,
   speaking: false,
   mockFinished: false,
+  stripFrom: 0, // transcript index the strip starts at (moved by "Clear")
+  lastAuto: null, // { id, question, t } of the latest auto-answer, for joining question pieces
 };
 
 const SPEAKER = (ch) => (ch === 0 ? 'them' : 'me');
 const theirLabel = (m = mode) => (m === 'meeting' ? 'Them' : 'Interviewer');
 
-// ---------------------------------------------------------------- level meters
-const METER_SEGMENTS = 12;
-function buildMeters() {
-  for (const id of ['meter0', 'meter1']) {
-    $(id).innerHTML = Array.from({ length: METER_SEGMENTS }, (_, i) => `<i style="height:${4 + Math.round((i / (METER_SEGMENTS - 1)) * 8)}px"></i>`).join('');
-  }
-}
-function setMeter(id, level) {
-  const lit = Math.min(METER_SEGMENTS, Math.round(Math.sqrt(Math.min(1, level * 4)) * METER_SEGMENTS));
-  $(id).querySelectorAll('i').forEach((el, i) => el.classList.toggle('on', i < lit));
+// ---------------------------------------------------------------- audio indicators
+function setLevel(ch, level) {
+  const on = level > 0.015;
+  $(`ind${ch}`).classList.toggle('active', on);
+  if (ch === 0) $('ovListen').classList.toggle('hot', on);
 }
 
 // ---------------------------------------------------------------- transcript UI
@@ -147,16 +255,39 @@ function lineHtml(l, m = mode, interim = false) {
   return `<div class="line ${l.speaker}${interim ? ' interim' : ''}"><span class="who">${l.speaker === 'me' ? 'You' : theirLabel(m)}</span><span class="txt">${esc(l.text)}</span></div>`;
 }
 
+const CHIP_WORDS = 3;
+const MAX_CHIPS = 16;
+function chipsFor(text, cls) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < words.length; i += CHIP_WORDS) out.push(`<span class="chip ${cls}">${esc(words.slice(i, i + CHIP_WORDS).join(' '))}</span>`);
+  return out;
+}
+
+let renderQueued = false;
 function renderTranscript() {
-  const box = $('transcript');
-  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
-  const lines = sess.transcript.slice(-80).map((l) => lineHtml(l));
-  for (const ch of [0, 1]) {
-    if (live.interim[ch]) lines.push(lineHtml({ speaker: SPEAKER(ch), text: live.interim[ch] }, mode, true));
-  }
-  box.innerHTML = lines.join('');
-  $('lineCount').textContent = sess.transcript.length ? `${sess.transcript.length} lines` : '';
-  if (atBottom) box.scrollTop = box.scrollHeight;
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    if (!sess) return;
+    // strip of chips: latest words, newest on the right
+    let chips = [];
+    for (const l of sess.transcript.slice(Math.max(live.stripFrom, sess.transcript.length - 4))) chips.push(...chipsFor(l.text, l.speaker));
+    for (const ch of [0, 1]) if (live.interim[ch]) chips.push(...chipsFor(live.interim[ch], `${SPEAKER(ch)} interim`));
+    chips = chips.slice(-MAX_CHIPS);
+    $('chips').innerHTML = chips.length ? chips.join('') : '<span class="chip-empty">Listening…</span>';
+
+    // full transcript panel (only when open)
+    if (!$('ovTranscript').classList.contains('hidden')) {
+      const box = $('transcript');
+      const atBottom = box.parentElement.scrollHeight - box.parentElement.scrollTop - box.parentElement.clientHeight < 30;
+      const lines = sess.transcript.slice(-120).map((l) => lineHtml(l));
+      for (const ch of [0, 1]) if (live.interim[ch]) lines.push(lineHtml({ speaker: SPEAKER(ch), text: live.interim[ch] }, mode, true));
+      box.innerHTML = lines.join('');
+      if (atBottom) box.parentElement.scrollTop = box.parentElement.scrollHeight;
+    }
+  });
 }
 
 function addFinal(ch, text) {
@@ -173,7 +304,8 @@ function addFinal(ch, text) {
 // ---------------------------------------------------------------- question detection
 const Q_START =
   /^(what|why|how|when|where|which|who|whom|whose|can|could|would|will|do|does|did|is|are|was|were|have|has|had|should|shall|may|tell me|walk me|describe|explain|give me|talk (me )?(about|through)|share|imagine|suppose|design|write|implement|solve|compare|define|list)\b/i;
-const Q_ANY = /\b(tell me about|walk me through|can you|could you|would you|how would you|what would you|why did you|have you ever|what is|what are|what's|explain|describe)\b/i;
+const Q_ANY =
+  /\b(tell me about|walk me through|can you|could you|would you|how would you|what would you|why did you|have you ever|what is|what are|what's|explain|describe|i want you to|i'd like you to|i would like you to|let's (write|create|build|design|implement|code|see)|(write|create|build|implement|set up|configure|fix|debug|optimi[sz]e|refactor|show me) (a|an|the|me|us|some|this|that|your)\b)/i;
 
 function looksLikeQuestion(text) {
   const t = text.trim();
@@ -183,17 +315,37 @@ function looksLikeQuestion(text) {
   return sentences.some((s) => Q_START.test(s.trim())) || Q_ANY.test(t);
 }
 
+// Fires the auto-answer once the interviewer has really finished. Live speech arrives in
+// pieces ("Walk me through…" pause "…a time you disagreed with your manager"), so:
+//  - a piece ending in "?" is answered almost at once;
+//  - otherwise we wait for the end of the utterance (about 1 s of silence);
+//  - never while the interviewer is still mid-sentence (interim text pending).
 function scheduleDetection(delay) {
   clearTimeout(live.detectTimer);
   live.detectTimer = setTimeout(() => {
     if (!sess || mode === 'mock') return;
+    if (live.interim[0]) return; // still talking; the next final result reschedules
     const q = live.questionBuf.trim();
     if (!q || !$('autoToggle').checked) return;
-    if (looksLikeQuestion(q)) {
+    const continuing = isContinuation(live.lastAuto, q);
+    if (looksLikeQuestion(q) || continuing) {
       live.questionBuf = '';
       askAnswer(q, true);
     }
   }, delay);
+}
+
+// If the interviewer keeps talking right after an auto-answer started (and the candidate has
+// not replied yet), the new words are part of the same question: re-ask with the whole thing
+// and replace the half-question answer.
+const CONTINUATION_MS = 10000;
+
+// The new piece continues the previous question only if that question was clearly unfinished
+// (no "?" at the end) and the new piece does not start like a question of its own.
+function isContinuation(prev, piece) {
+  if (!prev || Date.now() - prev.t > CONTINUATION_MS || !byId.has(prev.id)) return false;
+  if (/\?\s*$/.test(prev.question)) return false;
+  return !Q_START.test(piece.trim()) && !/^(i want you|i'd like you|i would like you|let's|okay|ok|so|now|next|alright|great)\b/i.test(piece.trim());
 }
 
 // ---------------------------------------------------------------- STT events
@@ -211,13 +363,17 @@ api.onTranscript(({ channel, text, isFinal, speechFinal }) => {
       } else if (ch === 0) {
         live.questionBuf += ' ' + text;
         if (live.questionBuf.length > 2000) live.questionBuf = live.questionBuf.slice(-2000);
-      } else if (text.split(/\s+/).length >= 6 && !looksLikeQuestion(live.questionBuf)) {
-        live.questionBuf = '';
+      } else {
+        // The candidate is answering: what the interviewer says next is a new question.
+        live.lastAuto = null;
+        if (text.split(/\s+/).length >= 6 && !looksLikeQuestion(live.questionBuf)) live.questionBuf = '';
       }
     }
     if (speechFinal) {
       live.openLine[ch] = null;
-      if (ch === 0) scheduleDetection(600);
+      // A question mark means the question is complete: answer at once. Otherwise give the
+      // interviewer a moment to finish the sentence (utterance end usually fires first).
+      if (ch === 0) scheduleDetection(/\?\s*$/.test(live.questionBuf.trim()) ? 120 : 800);
     }
   } else {
     live.interim[ch] = text;
@@ -231,7 +387,7 @@ api.onUtteranceEnd(({ channel }) => {
   const ch = channel === 1 ? 1 : 0;
   live.openLine[ch] = null;
   live.interim[ch] = '';
-  if (ch === 0) scheduleDetection(100);
+  if (ch === 0) scheduleDetection(0);
   if (ch === 1 && mode === 'mock') armMockSilence();
   renderTranscript();
 });
@@ -243,7 +399,7 @@ api.onSpeechStarted(({ channel }) => {
 
 api.onSttStatus((s) => {
   if (!sess) return;
-  if (s.state === 'connected') setStatus('on');
+  if (s.state === 'connected') setStatus('on', mode === 'mock' && live.speaking ? 'Interviewer speaking' : undefined);
   else if (s.state === 'connecting') setStatus('warn');
   else if (s.state === 'reconnecting') setStatus('warn', 'Reconnecting');
   else if (s.state === 'error') {
@@ -252,85 +408,177 @@ api.onSttStatus((s) => {
   }
 });
 
-// ---------------------------------------------------------------- AI cards
-const cards = new Map();
-const KIND_LABEL = { answer: 'Answer', chat: 'Ask', screenshot: 'Screen', mock: 'Interviewer' };
+// ---------------------------------------------------------------- answers (overlay panel)
+// Every AI response (answer, chat, screenshot, mock turn) is one item; the panel shows one
+// at a time and ←/→ browse them, like flipping through cards.
+const answers = [];
+const byId = new Map();
+let current = -1;
+let answerRaf = 0;
 
-function addCard(kind, label, onDone) {
-  const requestId = uid();
-  const el = document.createElement('article');
-  el.className = `answer loading ${kind}`;
-  el.innerHTML = `
-    <div class="answer-head">
-      <span class="badge">${KIND_LABEL[kind] || kind}</span>
-      <span class="answer-q" title="${esc(label)}">${esc(label)}</span>
-      <span class="typing"><i></i><i></i><i></i></span>
-      <span class="answer-time">${clock(Date.now())}</span>
-      <button class="icon-btn" data-act="copy" title="Copy">${icon('copy')}</button>
-      <button class="icon-btn" data-act="close" title="Dismiss">${icon('x')}</button>
-    </div>
-    <div class="answer-body prose"></div>`;
-  el.querySelector('[data-act="close"]').onclick = () => {
-    api.aiCancel(requestId);
-    el.remove();
-  };
-  el.querySelector('[data-act="copy"]').onclick = () => {
-    navigator.clipboard.writeText(el.querySelector('.answer-body').innerText).then(() => toast('Copied to clipboard'));
-  };
-  const feed = $('answers');
-  feed.prepend(el);
-  feed.scrollTop = 0;
-  while (feed.children.length > 20) feed.lastChild.remove();
-  cards.set(requestId, { el, text: '', kind, question: label, onDone, raf: 0 });
-  return requestId;
+function addAnswer(kind, question, onDone) {
+  const item = { id: uid(), kind, question, text: '', shown: 0, t: Date.now(), status: 'loading', rating: 0, onDone };
+  answers.push(item);
+  byId.set(item.id, item);
+  while (answers.length > 50) byId.delete(answers.shift().id);
+  current = answers.length - 1;
+  $('ovCard').scrollTop = 0;
+  renderAnswer();
+  return item.id;
 }
 
-function renderCard(card) {
-  if (card.raf) return;
-  card.raf = requestAnimationFrame(() => {
-    card.raf = 0;
-    card.el.querySelector('.answer-body').innerHTML = md(card.text);
+// Removes an answer (used when a half question is replaced by the full one).
+function removeAnswer(id) {
+  const item = byId.get(id);
+  if (!item) return;
+  if (item.status === 'loading') api.aiCancel(id);
+  byId.delete(id);
+  answers.splice(answers.indexOf(item), 1);
+  if (sess) sess.answers = sess.answers.filter((a) => a.id !== id);
+  if (current >= answers.length) current = answers.length - 1;
+}
+
+// Text is revealed smoothly: each frame shows a share of what has arrived but is not yet on
+// screen, so a big chunk from the server flows in over ~0.3 s instead of jumping, and the
+// display never falls behind the stream.
+function revealStep(item) {
+  const backlog = item.text.length - item.shown;
+  if (backlog <= 0) return false;
+  item.shown = Math.min(item.text.length, item.shown + Math.max(8, Math.ceil(backlog / 5)));
+  return item.shown < item.text.length;
+}
+
+// Code blocks get a header with the language (dockerfile, yaml, sql, …) and a Copy button.
+const LANG_NAMES = {
+  dockerfile: 'Dockerfile', docker: 'Dockerfile', yaml: 'YAML', yml: 'YAML', sql: 'SQL', mysql: 'SQL', postgresql: 'SQL', pgsql: 'SQL', plsql: 'PL/SQL',
+  bash: 'Bash', sh: 'Shell', shell: 'Shell', zsh: 'Shell', console: 'Terminal', powershell: 'PowerShell', ps1: 'PowerShell', bat: 'Batch', cmd: 'Batch',
+  js: 'JavaScript', javascript: 'JavaScript', jsx: 'JSX', ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX', py: 'Python', python: 'Python',
+  json: 'JSON', jsonc: 'JSON', xml: 'XML', html: 'HTML', css: 'CSS', scss: 'SCSS', ini: 'INI', toml: 'TOML', properties: 'Properties', env: '.env', dotenv: '.env',
+  hcl: 'Terraform (HCL)', terraform: 'Terraform', tf: 'Terraform', groovy: 'Groovy', jenkinsfile: 'Jenkinsfile', makefile: 'Makefile', make: 'Makefile',
+  nginx: 'nginx', apache: 'Apache', apacheconf: 'Apache', systemd: 'systemd', cron: 'crontab', crontab: 'crontab', gitignore: '.gitignore',
+  graphql: 'GraphQL', gql: 'GraphQL', proto: 'Protobuf', protobuf: 'Protobuf', ruby: 'Ruby', rb: 'Ruby', vagrantfile: 'Vagrantfile', jinja: 'Jinja', j2: 'Jinja',
+  java: 'Java', kotlin: 'Kotlin', kt: 'Kotlin', scala: 'Scala', go: 'Go', golang: 'Go', rust: 'Rust', rs: 'Rust', c: 'C', cpp: 'C++', 'c++': 'C++',
+  csharp: 'C#', cs: 'C#', fsharp: 'F#', php: 'PHP', swift: 'Swift', dart: 'Dart', r: 'R', lua: 'Lua', perl: 'Perl', elixir: 'Elixir', haskell: 'Haskell',
+  regex: 'Regex', diff: 'Diff', text: 'Text', plaintext: 'Text', promql: 'PromQL', rego: 'Rego', bicep: 'Bicep', nix: 'Nix', cue: 'CUE',
+};
+function decorateCode(root) {
+  root.querySelectorAll('pre').forEach((pre) => {
+    const code = pre.querySelector('code');
+    const lang = ((code && code.className.match(/language-(\S+)/)) || [])[1] || '';
+    const wrap = document.createElement('div');
+    wrap.className = 'code-wrap';
+    wrap.innerHTML = `<div class="code-bar"><span>${esc(LANG_NAMES[lang.toLowerCase()] || lang || 'Code')}</span><button class="code-copy" data-copy title="Copy code">${icon('copy')}Copy</button></div>`;
+    pre.replaceWith(wrap);
+    wrap.appendChild(pre);
   });
 }
 
+let lastHtml = '';
+function drawAnswer() {
+  answerRaf = 0;
+  const item = answers[current];
+  $('ovCard').classList.toggle('hidden', !item);
+  $('ovEmpty').classList.toggle('hidden', !!item);
+  $('ovPos').textContent = answers.length ? `${current + 1} / ${answers.length}` : '';
+  $('oPrev').disabled = current <= 0;
+  $('oNext').disabled = current >= answers.length - 1;
+  let more = false;
+  if (item) {
+    const card = $('ovCard');
+    card.classList.toggle('loading', item.status === 'loading');
+    card.classList.toggle('error', item.status === 'error');
+    $('ovQ').textContent = item.question;
+    $('ovKind').textContent = item.status === 'error' ? 'Error' : KIND_LABEL[item.kind] || item.kind;
+    $('ovTime').textContent = clock(item.t);
+    if (item.status === 'error') {
+      $('ovA').textContent = item.text;
+      lastHtml = '';
+    } else {
+      more = revealStep(item);
+      const html = md(item.text.slice(0, item.shown));
+      if (html !== lastHtml) {
+        lastHtml = html;
+        $('ovA').innerHTML = html;
+        decorateCode($('ovA'));
+      }
+    }
+    $('oUp').classList.toggle('on', item.rating === 1);
+    $('oDown').classList.toggle('on', item.rating === -1);
+    $('oUp').classList.toggle('hidden', item.status !== 'done');
+    $('oDown').classList.toggle('hidden', item.status !== 'done');
+  }
+  fitOverlay();
+  if (more) renderAnswer();
+}
+
+function renderAnswer() {
+  if (!answerRaf) answerRaf = requestAnimationFrame(drawAnswer);
+}
+
+function showAnswer(i) {
+  if (i < 0 || i >= answers.length) return;
+  current = i;
+  answers[i].shown = answers[i].text.length; // browsing: show it whole at once
+  $('ovCard').scrollTop = 0;
+  renderAnswer();
+}
+
+function clearAnswers() {
+  live.lastAuto = null;
+  lastHtml = '';
+  for (const a of answers) if (a.status === 'loading') api.aiCancel(a.id);
+  answers.length = 0;
+  byId.clear();
+  current = -1;
+  renderAnswer();
+}
+
+function rate(value) {
+  const item = answers[current];
+  if (!item || item.status !== 'done') return;
+  item.rating = item.rating === value ? 0 : value;
+  const saved = sess && sess.answers.find((a) => a.id === item.id);
+  if (saved) saved.rating = item.rating;
+  renderAnswer();
+}
+
 api.onAiDelta(({ requestId, text }) => {
-  const c = cards.get(requestId);
-  if (!c) return;
-  c.text += text;
-  renderCard(c);
+  const item = byId.get(requestId);
+  if (!item) return;
+  item.text += text;
+  if (answers[current] === item) renderAnswer();
 });
 
 api.onAiDone(({ requestId, text, aborted }) => {
-  const c = cards.get(requestId);
-  if (!c) return;
-  c.el.classList.remove('loading');
-  if (!aborted && typeof text === 'string') {
-    c.text = text;
-    c.el.querySelector('.answer-body').innerHTML = md(text);
+  const item = byId.get(requestId);
+  if (!item) return;
+  if (!aborted && typeof text === 'string') item.text = text;
+  item.status = 'done';
+  if (aborted && !item.text) {
+    const i = answers.indexOf(item);
+    answers.splice(i, 1);
+    byId.delete(item.id);
+    if (current >= answers.length) current = answers.length - 1;
+  } else if (sess && !aborted) {
+    sess.answers.push({ id: item.id, kind: item.kind, question: item.question, text: item.text, t: item.t, rating: 0 });
   }
-  if (aborted && !c.text) c.el.remove();
-  if (sess && !aborted && c.kind !== 'notes') {
-    sess.answers.push({ kind: c.kind, question: c.question, text: c.text, t: Date.now() });
-  }
-  cards.delete(requestId);
   if (live.activeAnswerId === requestId) live.activeAnswerId = null;
-  if (c.onDone) c.onDone(aborted ? null : c.text);
+  renderAnswer();
+  if (item.onDone) item.onDone(aborted ? null : item.text);
 });
 
 api.onAiError(({ requestId, message }) => {
-  const c = cards.get(requestId);
-  if (!c) return;
-  c.el.classList.remove('loading');
-  c.el.classList.add('error');
-  c.el.querySelector('.badge').textContent = 'Error';
-  c.el.querySelector('.answer-body').textContent = message;
-  cards.delete(requestId);
+  const item = byId.get(requestId);
+  if (!item) return;
+  item.status = 'error';
+  item.text = message;
   if (live.activeAnswerId === requestId) live.activeAnswerId = null;
-  if (c.onDone) c.onDone(null, message);
+  renderAnswer();
+  if (item.onDone) item.onDone(null, message);
 });
 
 function aiRequest(kind, label, payload, onDone) {
-  const requestId = addCard(kind, label, onDone);
+  const requestId = addAnswer(kind, label, onDone);
   api.aiStream({ requestId, kind, payload: { mode: mode === 'mock' ? 'interview' : mode, transcript: sess ? sess.transcript : [], ...payload } });
   return requestId;
 }
@@ -344,15 +592,38 @@ function lastTheirLine() {
 
 function askAnswer(question, auto = false) {
   if (!sess || mode === 'mock') return;
-  if (live.activeAnswerId && auto) api.aiCancel(live.activeAnswerId);
-  const q = (question || live.questionBuf.trim() || lastTheirLine()).trim();
+  let q = (question || live.questionBuf.trim() || lastTheirLine()).trim();
   live.questionBuf = '';
+  if (auto) {
+    const prev = live.lastAuto;
+    if (prev && isContinuation(prev, q)) {
+      // Continuation of the same question: answer the whole thing, replacing the half answer.
+      q = `${prev.question} ${q}`.trim();
+      removeAnswer(prev.id);
+    } else if (live.activeAnswerId) {
+      api.aiCancel(live.activeAnswerId);
+    }
+  }
   live.activeAnswerId = aiRequest('answer', q || 'Latest question', { question: q });
+  live.lastAuto = auto ? { id: live.activeAnswerId, question: q, t: Date.now() } : null;
 }
 
 function askScreenshot() {
   if (!sess || mode === 'mock') return;
-  aiRequest('screenshot', 'Screen capture', {}, null);
+  aiRequest('screenshot', 'Solve what is on my screen', {}, null);
+}
+
+function toggleChat(force) {
+  if (!sess || mode === 'mock') return;
+  const form = $('chatForm');
+  const show = force ?? form.classList.contains('hidden');
+  form.classList.toggle('hidden', !show);
+  $('oChat').classList.toggle('active', show);
+  if (show) {
+    $('overlay').classList.remove('collapsed');
+    setTimeout(() => $('chatInput').focus(), 0);
+  }
+  fitOverlay();
 }
 
 // ---------------------------------------------------------------- audio capture
@@ -361,6 +632,7 @@ async function startAudio(withSystemAudio) {
   await ctx.audioWorklet.addModule('pcm-worklet.js');
   const merger = ctx.createChannelMerger(2);
 
+  $('ind0').classList.toggle('off', !withSystemAudio);
   if (withSystemAudio) {
     let display;
     try {
@@ -372,6 +644,7 @@ async function startAudio(withSystemAudio) {
     display.getVideoTracks().forEach((t) => (t.enabled = false));
     if (display.getAudioTracks().length === 0) {
       toast('Computer audio is not available on this system. Only your microphone will be transcribed.', 'error', 9000);
+      $('ind0').classList.add('off');
     } else {
       ctx.createMediaStreamSource(new MediaStream(display.getAudioTracks())).connect(merger, 0, 0);
     }
@@ -403,8 +676,8 @@ async function startAudio(withSystemAudio) {
 
   node.port.onmessage = ({ data }) => {
     api.sttAudio(new Uint8Array(data.pcm));
-    setMeter('meter0', data.level0);
-    setMeter('meter1', data.level1);
+    setLevel(0, data.level0);
+    setLevel(1, data.level1);
   };
   live.audioCtx = ctx;
   live.worklet = node;
@@ -417,11 +690,11 @@ function stopAudio() {
   if (live.audioCtx) live.audioCtx.close().catch(() => {});
   live.audioCtx = null;
   live.worklet = null;
-  setMeter('meter0', 0);
-  setMeter('meter1', 0);
+  setLevel(0, 0);
+  setLevel(1, 0);
 }
 
-// ---------------------------------------------------------------- practice (mock) interview
+// ---------------------------------------------------------------- mock interview
 function speak(text, onEnd) {
   const plain = text.replace(/[#*_`>]/g, '').trim();
   if (!plain || !window.speechSynthesis) return onEnd && onEnd();
@@ -446,7 +719,7 @@ function speak(text, onEnd) {
 
 function mockInterviewerTurn() {
   if (!sess || live.mockFinished) return;
-  $('btnMockDone').disabled = true;
+  $('oMockDone').disabled = true;
   aiRequest('mock', 'Interviewer', { history: live.mockHistory, totalQuestions: Number($('mockCount').value) }, (text) => {
     if (!text || !sess) return;
     const finished = /that concludes our interview/i.test(text);
@@ -458,13 +731,13 @@ function mockInterviewerTurn() {
       live.mockFinished = true;
       speak(spoken, () => {
         setStatus('on', 'Finished');
-        toast('Practice complete. Your feedback is above — end the session to save it.', 'info', 8000);
+        toast('Practice complete. Your feedback is in the panel — press End to save it.', 'info', 8000);
       });
       return;
     }
     speak(text, () => {
       live.mockAnswerBuf = '';
-      $('btnMockDone').disabled = false;
+      $('oMockDone').disabled = false;
     });
   });
 }
@@ -496,23 +769,31 @@ function populateVoices() {
 }
 
 // ---------------------------------------------------------------- session lifecycle
-function configureLiveView() {
+function configureOverlay() {
   const practice = mode === 'mock';
-  $('btnMockDone').classList.toggle('hidden', !practice);
-  $('btnAnswer').classList.toggle('hidden', practice);
-  $('btnShot').classList.toggle('hidden', practice);
-  $('autoWrap').classList.toggle('hidden', practice);
-  $('themLabel').textContent = practice ? 'Interviewer' : theirLabel();
-  $('emptyTitle').textContent = practice ? 'Starting your practice interview' : 'Listening for questions';
+  $('oMockDone').classList.toggle('hidden', !practice);
+  for (const id of ['oAnswer', 'oShot', 'oChat', 'ovAutoBadge']) $(id).classList.toggle('hidden', practice);
+  $('chatForm').classList.add('hidden');
+  $('oChat').classList.remove('active');
+  $('ovMenu').classList.add('hidden');
+  $('ovTranscript').classList.add('hidden');
+  $('overlay').classList.remove('collapsed');
+  $('emptyTitle').textContent = practice ? 'Starting your mock interview' : 'Listening for questions';
   $('emptyText').textContent = practice
-    ? 'The interviewer will speak each question. Answer out loud, then pause or press Done answering.'
-    : 'Suggested answers appear here as soon as a question is asked. Press Ctrl+Shift+Enter to answer manually.';
+    ? 'The interviewer speaks each question. Answer out loud, then pause or press Done answering.'
+    : 'Answers appear here as soon as a question is asked. Press Ctrl+Shift+Enter to answer manually.';
+  setExpanded(false);
+}
+
+function updateAutoBadge() {
+  const on = $('autoToggle').checked;
+  $('ovAutoBadge').textContent = on ? 'Auto-answer on' : 'Auto-answer off';
 }
 
 async function startSession() {
   await api.saveSettings({ profile: profileFromForm(), autoAnswer: $('autoToggle').checked });
   settings = await api.getSettings();
-  if (!settings.anthropicKey || !settings.deepgramKey) {
+  if (aiKeyMissing() || !settings.deepgramKey) {
     updateKeysCallout();
     return toast('Add your API keys in Settings first.', 'error');
   }
@@ -526,27 +807,31 @@ async function startSession() {
     transcript: [],
     answers: [],
     notes: '',
+    language: settings.language,
+    model: settings.model,
     profile: { role: settings.profile.role, company: settings.profile.company },
   };
-  Object.assign(live, { openLine: { 0: null, 1: null }, interim: { 0: '', 1: '' }, questionBuf: '', mockHistory: [], mockAnswerBuf: '', mockFinished: false, speaking: false });
-  $('answers').innerHTML = '';
+  Object.assign(live, { openLine: { 0: null, 1: null }, interim: { 0: '', 1: '' }, questionBuf: '', mockHistory: [], mockAnswerBuf: '', mockFinished: false, speaking: false, stripFrom: 0, lastAuto: null });
+  clearAnswers();
   $('transcript').innerHTML = '';
-  $('lineCount').textContent = '';
-  configureLiveView();
+  $('chips').innerHTML = '<span class="chip-empty">Listening…</span>';
+  configureOverlay();
   $('btnStart').disabled = true;
-  document.querySelectorAll('.mode-card').forEach((b) => (b.disabled = true));
-  switchView('live');
+  $$('.mode-card').forEach((b) => (b.disabled = true));
   setStatus('warn');
+  $('ovTimer').textContent = '00:00';
+  enterOverlay();
 
   try {
     await api.sttStart();
     await startAudio(mode !== 'mock');
   } catch (err) {
-    toast(err.message, 'error');
     await teardown();
     sess = null;
     resetSetupControls();
+    enterDashboard();
     switchView('setup');
+    toast(err.message, 'error');
     return;
   }
 
@@ -554,8 +839,9 @@ async function startSession() {
   $('timer').classList.remove('hidden');
   $('timer').textContent = '00:00';
   live.timerInt = setInterval(() => {
-    const s = Math.floor((Date.now() - t0) / 1000);
-    $('timer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    const t = fmtDuration(Date.now() - t0);
+    $('timer').textContent = t;
+    $('ovTimer').textContent = t;
   }, 1000);
 
   if (mode === 'mock') mockInterviewerTurn();
@@ -563,7 +849,7 @@ async function startSession() {
 
 function resetSetupControls() {
   $('btnStart').disabled = false;
-  document.querySelectorAll('.mode-card').forEach((b) => (b.disabled = false));
+  $$('.mode-card').forEach((b) => (b.disabled = false));
 }
 
 async function teardown() {
@@ -571,7 +857,7 @@ async function teardown() {
   clearTimeout(live.detectTimer);
   clearTimeout(live.mockSilenceTimer);
   if (window.speechSynthesis) speechSynthesis.cancel();
-  for (const id of cards.keys()) api.aiCancel(id);
+  for (const a of answers) if (a.status === 'loading') api.aiCancel(a.id);
   stopAudio();
   await api.sttStop();
   $('timer').classList.add('hidden');
@@ -585,8 +871,10 @@ async function endSession() {
   finished.endedAt = Date.now();
   sess = null;
   resetSetupControls();
+  enterDashboard();
   if (finished.transcript.length === 0 && finished.answers.length === 0) {
     switchView('setup');
+    toast('Session ended — nothing was transcribed, so it was not saved.', 'info');
     return;
   }
   await api.saveSession(finished);
@@ -596,29 +884,64 @@ async function endSession() {
 }
 
 // ---------------------------------------------------------------- history
+let histFilter = 'all';
+let histQuery = '';
+let histItems = [];
+
 async function renderHistoryList() {
   $('historyDetail').classList.add('hidden');
   const list = $('historyList');
   list.classList.remove('hidden');
-  const items = await api.listSessions();
+  histItems = await api.listSessions();
+  list.innerHTML = `
+    <h1 class="page-title">History</h1>
+    <p class="page-sub">Every finished session with its transcript, answers and AI notes.</p>
+    <div class="hist-tools">
+      <div class="seg" id="histSeg">
+        ${['all', 'interview', 'meeting', 'mock'].map((f) => `<button data-f="${f}" class="${f === histFilter ? 'active' : ''}">${f === 'all' ? 'All' : MODE_LABEL[f]}</button>`).join('')}
+      </div>
+      <div class="hist-search">${icon('search')}<input id="histSearch" placeholder="Search by title, role or company" value="${esc(histQuery)}" /></div>
+    </div>
+    <div id="histRows"></div>`;
+  $$('#histSeg button').forEach(
+    (b) =>
+      (b.onclick = () => {
+        histFilter = b.dataset.f;
+        $$('#histSeg button').forEach((x) => x.classList.toggle('active', x === b));
+        renderHistoryRows();
+      }),
+  );
+  $('histSearch').oninput = (e) => {
+    histQuery = e.target.value;
+    renderHistoryRows();
+  };
+  renderHistoryRows();
+}
+
+function renderHistoryRows() {
+  const q = histQuery.trim().toLowerCase();
+  const items = histItems.filter(
+    (s) => (histFilter === 'all' || s.mode === histFilter) && (!q || [s.title, s.role, s.company].some((v) => (v || '').toLowerCase().includes(q))),
+  );
+  const rows = $('histRows');
   if (!items.length) {
-    list.innerHTML = `<div class="empty-block"><div class="empty-icon" style="margin:0 auto 10px">${icon('clock')}</div><div class="empty-title">No sessions yet</div><div class="empty-text" style="margin:0 auto">Finished sessions are saved here with their transcript, answers and notes.</div></div>`;
+    rows.innerHTML = `<div class="empty-block"><div class="empty-icon">${icon('clock')}</div><div class="empty-title">${histItems.length ? 'No matching sessions' : 'No sessions yet'}</div><div class="empty-text">${histItems.length ? 'Try another filter or search.' : 'Finished sessions are saved here with their transcript, answers and notes.'}</div></div>`;
     return;
   }
-  list.innerHTML = `
-    <div class="list-head"><div class="section-title" style="margin:0">Sessions</div><span class="count">${items.length}</span></div>
-    <div class="list">${items
-      .map((s) => {
-        const mins = s.endedAt ? Math.max(1, Math.round((s.endedAt - s.startedAt) / 60000)) : null;
-        return `<div class="hist-row" data-id="${esc(s.id)}">
-          <div class="hist-icon">${icon(MODE_ICON[s.mode] || 'doc')}</div>
-          <div class="hist-main"><div class="hist-title">${esc(s.title)}</div>
-          <div class="hist-meta">${MODE_LABEL[s.mode] || esc(s.mode)} · ${fmtDate(s.startedAt)}${mins ? ` · ${mins} min` : ''}</div></div>
-          ${icon('chev-right')}
-        </div>`;
-      })
-      .join('')}</div>`;
-  list.querySelectorAll('.hist-row').forEach((el) => (el.onclick = () => openHistory(el.dataset.id)));
+  rows.innerHTML = `<div class="list">${items
+    .map((s) => {
+      const dur = s.endedAt ? fmtDuration(s.endedAt - s.startedAt) : '';
+      const sub = [s.role, s.company].filter(Boolean).join(' · ');
+      return `<div class="hist-row" data-id="${esc(s.id)}">
+        <div class="hist-icon">${icon(MODE_ICON[s.mode] || 'doc')}</div>
+        <div class="hist-main"><div class="hist-title">${esc(s.title)}</div>
+        <div class="hist-meta">${fmtDate(s.startedAt)}${dur ? ` · ${dur}` : ''}${sub ? ` · ${esc(sub)}` : ''} · ${s.answers} answer${s.answers === 1 ? '' : 's'}</div></div>
+        <span class="pill">${MODE_LABEL[s.mode] || esc(s.mode)}</span>
+        ${icon('chev-right')}
+      </div>`;
+    })
+    .join('')}</div>`;
+  rows.querySelectorAll('.hist-row').forEach((el) => (el.onclick = () => openHistory(el.dataset.id)));
 }
 
 function sessionMarkdown(s) {
@@ -639,26 +962,32 @@ async function openHistory(id, generateNotes = false) {
   $('historyList').classList.add('hidden');
   const d = $('historyDetail');
   d.classList.remove('hidden');
-  const mins = s.endedAt ? Math.max(1, Math.round((s.endedAt - s.startedAt) / 60000)) : null;
+  const dur = s.endedAt ? fmtDuration(s.endedAt - s.startedAt) : '';
+  const sub = [s.profile?.role, s.profile?.company].filter(Boolean).join(' · ');
   d.innerHTML = `
     <div class="detail-top">
       <button class="btn btn-sm" id="hBack">${icon('arrow-left')}Back</button>
       <span class="spacer"></span>
       <button class="btn btn-sm" id="hNotes">${icon('refresh')}<span>${s.notes ? 'Regenerate notes' : 'Generate notes'}</span></button>
-      <button class="btn btn-sm" id="hExport">${icon('download')}Export</button>
+      <button class="btn btn-sm" id="hExport">${icon('download')}Save transcript</button>
       <button class="icon-btn" id="hDelete" title="Delete session">${icon('trash')}</button>
     </div>
     <h2 class="detail-title">${esc(s.title)}</h2>
-    <p class="detail-meta">${MODE_LABEL[s.mode] || esc(s.mode)} · ${fmtDate(s.startedAt)}${mins ? ` · ${mins} min` : ''}</p>
+    <p class="detail-meta">${MODE_LABEL[s.mode] || esc(s.mode)} · ${fmtDate(s.startedAt)}${dur ? ` · ${dur}` : ''}${sub ? ` · ${esc(sub)}` : ''}</p>
     <div class="seg" id="hTabs">
-      <button data-pane="notes" class="active">Notes</button>
+      <button data-pane="notes" class="active">AI notes</button>
       <button data-pane="answers">Answers <span class="count">${s.answers.length}</span></button>
       <button data-pane="transcript">Transcript <span class="count">${s.transcript.length}</span></button>
     </div>
     <div class="detail-pane" id="pane-notes"><div class="notes prose" id="hNotesBody">${s.notes ? md(s.notes) : '<div class="muted-pad">No notes yet.</div>'}</div></div>
     <div class="detail-pane hidden" id="pane-answers">${
       s.answers.length
-        ? s.answers.map((a) => `<div class="qa"><div class="qa-q">${esc(a.question)}</div><div class="qa-a prose">${md(a.text)}</div></div>`).join('')
+        ? s.answers
+            .map(
+              (a) =>
+                `<div class="qa"><div class="qa-q"><span>${esc(a.question)}</span>${a.rating === 1 ? '<span class="rating up">Helpful</span>' : a.rating === -1 ? '<span class="rating down">Not helpful</span>' : ''}</div><div class="qa-a prose">${md(a.text)}</div></div>`,
+            )
+            .join('')
         : '<div class="muted-pad">No answers in this session.</div>'
     }</div>
     <div class="detail-pane hidden" id="pane-transcript"><div class="transcript">${s.transcript.map((l) => lineHtml(l, s.mode)).join('')}</div></div>`;
@@ -672,7 +1001,7 @@ async function openHistory(id, generateNotes = false) {
   );
   $('hBack').onclick = renderHistoryList;
   $('hExport').onclick = async () => {
-    if (await api.exportSession({ title: s.title, markdown: sessionMarkdown(s) })) toast('Exported');
+    if (await api.exportSession({ title: s.title, markdown: sessionMarkdown(s) })) toast('Saved');
   };
   $('hDelete').onclick = async () => {
     await api.deleteSession(s.id);
@@ -720,23 +1049,43 @@ async function openHistory(id, generateNotes = false) {
 // ---------------------------------------------------------------- wiring
 function setMode(m) {
   mode = m;
-  document.querySelectorAll('.mode-card').forEach((b) => b.classList.toggle('active', b.dataset.mode === m));
+  $$('.mode-card').forEach((b) => b.classList.toggle('active', b.dataset.mode === m));
   $('mockOpts').classList.toggle('hidden', m !== 'mock');
+  // Regular calls do not use the resume or job description.
+  $('resumeField').classList.toggle('hidden', m === 'meeting');
+  $('jdField').classList.toggle('hidden', m === 'meeting');
 }
 
-let saveTimer = null;
-function autosave(message = 'Settings saved') {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    await saveSettingsFromForm();
-    toast(message, 'success', 1600);
-  }, 350);
+async function importDoc(target, info, append) {
+  $(info).textContent = 'Reading file…';
+  const res = await api.importProfileDoc();
+  if (res.canceled) return ($(info).textContent = '');
+  if (res.error) {
+    $(info).textContent = '';
+    return toast(res.error, 'error');
+  }
+  const el = $(target);
+  el.value = append && el.value.trim() ? `${el.value.trim()}\n\n--- ${res.name} ---\n${res.text}` : append ? `--- ${res.name} ---\n${res.text}` : res.text;
+  $(info).textContent = append ? `Added ${res.name}` : `Imported from ${res.name}`;
+}
+
+function toggleAuto() {
+  $('autoToggle').checked = !$('autoToggle').checked;
+  api.saveSettings({ autoAnswer: $('autoToggle').checked });
+  updateAutoBadge();
+  toast(`Auto-answer ${$('autoToggle').checked ? 'on' : 'off'}`, 'info', 1500);
 }
 
 async function init() {
-  buildMeters();
-  document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => switchView(b.dataset.view)));
-  document.querySelectorAll('.mode-card').forEach((b) => (b.onclick = () => !sess && setMode(b.dataset.mode)));
+  // selects
+  $$('[data-setting]').forEach((el) => {
+    fillSelect(el, el.dataset.setting);
+    el.onchange = () => saveSetting(el.dataset.setting, el.value);
+  });
+
+  // dashboard
+  $$('#tabs button').forEach((b) => (b.onclick = () => switchView(b.dataset.view)));
+  $$('.mode-card').forEach((b) => (b.onclick = () => !sess && setMode(b.dataset.mode)));
   $('btnGoSettings').onclick = () => switchView('settings');
   $('btnHide').onclick = () => api.minimize();
   $('btnQuit').onclick = async () => {
@@ -744,59 +1093,128 @@ async function init() {
     api.quit();
   };
   $('pInstr').oninput = updateInstrCount;
+  $('btnImportResume').onclick = () => importDoc('pResume', 'resumeInfo', false);
+  $('btnImportDoc').onclick = () => importDoc('pDocs', 'docsInfo', true);
+  $('btnStart').onclick = startSession;
+  $('btnReturn').onclick = enterOverlay;
+  $('btnEndFromDash').onclick = endSession;
 
-  $('btnImportResume').onclick = async () => {
-    $('resumeInfo').textContent = 'Reading file…';
-    const res = await api.importProfileDoc();
-    if (res.canceled) return ($('resumeInfo').textContent = '');
-    if (res.error) {
-      $('resumeInfo').textContent = '';
-      return toast(res.error, 'error');
-    }
-    $('pResume').value = res.text;
-    $('resumeInfo').textContent = `Imported from ${res.name}`;
+  ['sHideShare', 'sHideTaskbar', 'sTheme'].forEach((id) => ($(id).onchange = () => autosaveFields()));
+  ['sGemini', 'sAnthropic', 'sDeepgram'].forEach((id) => ($(id).onchange = () => autosaveFields('API key saved')));
+  for (const id of ['sOpacity', 'ovOpacity']) {
+    $(id).oninput = () => {
+      const v = Number($(id).value);
+      $('sOpacity').value = v;
+      $('ovOpacity').value = v;
+      $('opacityValue').textContent = `${Math.round(v * 100)}%`;
+      api.saveSettings({ opacity: v });
+    };
+  }
+
+  // overlay toolbar
+  $('oAnswer').onclick = () => askAnswer();
+  $('oShot').onclick = askScreenshot;
+  $('oChat').onclick = () => toggleChat();
+  $('oMockDone').onclick = submitMockAnswer;
+  $('oEnd').onclick = endSession;
+  $('oCollapse').onclick = () => {
+    const c = $('overlay').classList.toggle('collapsed');
+    $('oCollapse').innerHTML = icon(c ? 'chev-down' : 'collapse');
+    $('oCollapse').title = c ? 'Show answers' : 'Collapse';
+    fitOverlay();
+  };
+  $('oMenu').onclick = () => {
+    const open = $('ovMenu').classList.toggle('hidden') === false;
+    $('oMenu').classList.toggle('on', open);
+    fitOverlay();
+  };
+  $('oDashboard').onclick = () => {
+    $('ovMenu').classList.add('hidden');
+    $('oMenu').classList.remove('on');
+    enterDashboard();
+    switchView('setup');
+    toast('The session is still running. Press Return to session to go back.', 'info', 4000);
+  };
+  $('oClickThrough').onclick = () => api.setClickThrough(true);
+  $('autoToggle').onchange = () => {
+    api.saveSettings({ autoAnswer: $('autoToggle').checked });
+    updateAutoBadge();
+  };
+  $('ovAutoBadge').onclick = toggleAuto;
+  $('ovAutoBadge').style.cursor = 'pointer';
+  $('ovAutoBadge').title = 'Toggle auto-answer (Ctrl+Shift+A)';
+
+  // transcript strip
+  $('oClearT').onclick = () => {
+    if (!sess) return;
+    live.stripFrom = sess.transcript.length;
+    live.interim = { 0: '', 1: '' };
+    renderTranscript();
+  };
+  $('oTranscript').onclick = () => {
+    const open = $('ovTranscript').classList.toggle('hidden') === false;
+    $('oTranscript').innerHTML = icon(open ? 'collapse' : 'expand');
+    $('oTranscript').title = open ? 'Hide full transcript' : 'Show full transcript';
+    renderTranscript();
+    fitOverlay();
   };
 
-  $('btnStart').onclick = startSession;
-  $('btnEnd').onclick = endSession;
-  $('btnAnswer').onclick = () => askAnswer();
-  $('btnShot').onclick = askScreenshot;
-  $('btnMockDone').onclick = submitMockAnswer;
-  $('autoToggle').onchange = () => api.saveSettings({ autoAnswer: $('autoToggle').checked });
+  // chat
   $('chatForm').onsubmit = (e) => {
     e.preventDefault();
     const msg = $('chatInput').value.trim();
     if (!msg) return;
-    if (!settings?.anthropicKey) return toast('Add your Anthropic API key in Settings first.', 'error');
+    if (aiKeyMissing()) return toast('Add the API key for your selected model in Settings first.', 'error');
     $('chatInput').value = '';
     aiRequest('chat', msg, { message: msg });
   };
-
-  // Settings save automatically.
-  ['sModel', 'sEffort', 'sStyle', 'sLang', 'sHideShare', 'sHideTaskbar', 'sTheme'].forEach((id) => ($(id).onchange = () => autosave()));
-  ['sAnthropic', 'sDeepgram'].forEach((id) => ($(id).onchange = () => autosave('API key saved')));
-  $('sOpacity').oninput = () => {
-    $('opacityValue').textContent = `${Math.round($('sOpacity').value * 100)}%`;
-    api.saveSettings({ opacity: Number($('sOpacity').value) });
+  $('chatInput').onkeydown = (e) => {
+    if (e.key === 'Escape') toggleChat(false);
   };
+
+  // answers panel
+  $('oPrev').onclick = () => showAnswer(current - 1);
+  $('oNext').onclick = () => showAnswer(current + 1);
+  $('oClearA').onclick = clearAnswers;
+  $('oExpand').onclick = () => setExpanded(!expanded);
+  $('ovA').onclick = (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const code = btn.closest('.code-wrap').querySelector('pre').innerText;
+    navigator.clipboard.writeText(code).then(() => toast('Code copied', 'success', 1200));
+  };
+  $('oCopy').onclick = () => {
+    const item = answers[current];
+    if (item) navigator.clipboard.writeText(item.text).then(() => toast('Copied', 'success', 1200));
+  };
+  $('oUp').onclick = () => rate(1);
+  $('oDown').onclick = () => rate(-1);
+
+  // keep the overlay window sized to its content
+  new ResizeObserver(fitOverlay).observe(document.body);
 
   api.onHotkey((k) => {
     if (k === 'answer') askAnswer();
     else if (k === 'screenshot') askScreenshot();
-    else if (k === 'toggle-auto') {
-      $('autoToggle').checked = !$('autoToggle').checked;
-      api.saveSettings({ autoAnswer: $('autoToggle').checked });
-      toast(`Auto-answer ${$('autoToggle').checked ? 'on' : 'off'}`, 'info', 1500);
-    }
+    else if (k === 'toggle-auto') toggleAuto();
+    else if (k === 'chat') toggleChat(true);
+    else if (k === 'clear') clearAnswers();
+    else if (k === 'prev') showAnswer(current - 1);
+    else if (k === 'next') showAnswer(current + 1);
+    else if (k === 'scroll-up') $('ovCard').scrollBy({ top: -140, behavior: 'smooth' });
+    else if (k === 'scroll-down') $('ovCard').scrollBy({ top: 140, behavior: 'smooth' });
   });
-  api.onClickThrough((on) => toast(on ? 'Click-through on — press Ctrl+Shift+X to turn off' : 'Click-through off', 'info', 2200));
+  api.onClickThrough((on) => {
+    $('oClickThrough').classList.toggle('active', on);
+    toast(on ? 'Click-through on — press Ctrl+Shift+X to turn off' : 'Click-through off', 'info', 2200);
+  });
 
   if (window.speechSynthesis) speechSynthesis.onvoiceschanged = populateVoices;
   populateVoices();
   setMode('interview');
   await loadSettingsIntoForms();
   const info = await api.appInfo();
-  $('version').textContent = `Interview Pilot ${info.version}`;
+  $('version').textContent = `Version ${info.version}`;
 }
 
 init();

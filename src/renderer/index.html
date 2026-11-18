@@ -9,7 +9,7 @@
     <title>Interview Pilot</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="mode-dashboard">
     <!-- Icon set: 24px grid, 1.75 stroke -->
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
       <defs>
@@ -30,7 +30,9 @@
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></symbol>
         <symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12" /></symbol>
         <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6.5 9.5 5.5 5.5 5.5-5.5" /></symbol>
+        <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="m6.5 14.5 5.5-5.5 5.5 5.5" /></symbol>
         <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9.5 6.5 5.5 5.5-5.5 5.5" /></symbol>
+        <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="m14.5 6.5-5.5 5.5 5.5 5.5" /></symbol>
         <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6" /></symbol>
         <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M4 19.5h16" /></symbol>
         <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6 7l1 13h10l1-13" /></symbol>
@@ -38,14 +40,22 @@
         <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></symbol>
         <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.4v.1" /></symbol>
         <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" /><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2" /></symbol>
-        <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A9.7 9.7 0 0 1 12 6c5 0 8.5 4.5 9.5 6a17 17 0 0 1-2.6 3.2M6.6 7.6A16 16 0 0 0 2.5 12c1 1.5 4.5 6 9.5 6a9.3 9.3 0 0 0 4.4-1.1" /><path d="M9.9 10a3 3 0 0 0 4.1 4.1" /></symbol>
-        <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></symbol>
         <symbol id="i-logo" viewBox="0 0 24 24"><path d="M5 13.5h2.5l2-5 3 9 2-6 1.5 2H19" /></symbol>
+        <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5" /></symbol>
+        <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" /></symbol>
+        <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></symbol>
+        <symbol id="i-bars" viewBox="0 0 24 24"><path d="M6 10v4M10 7v10M14 9v6M18 11v2" /></symbol>
+        <symbol id="i-thumb-up" viewBox="0 0 24 24"><path d="M7 10v10H4V10zM7 10l4-7a2 2 0 0 1 2.5 2.4L12.6 10H18a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 16.8 20H7" /></symbol>
+        <symbol id="i-thumb-down" viewBox="0 0 24 24"><path d="M7 14V4H4v10zM7 14l4 7a2 2 0 0 0 2.5-2.4L12.6 14H18a2 2 0 0 0 2-2.3l-1.2-6A2 2 0 0 0 16.8 4H7" /></symbol>
+        <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7M6 9.5V20h4.5v-5h3v5H18V9.5" /></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.4-4.4" /></symbol>
+        <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 3.5 18.5 10l-6 1.8-2.3 6.2z" /></symbol>
       </defs>
     </svg>
 
-    <div class="shell">
-      <!-- Title bar -->
+    <!-- ================================================================ DASHBOARD -->
+    <div class="shell" id="dashboard">
       <header class="titlebar">
         <div class="app-mark"><svg><use href="#i-logo" /></svg></div>
         <span class="app-name">Interview Pilot</span>
@@ -56,249 +66,314 @@
         </div>
       </header>
 
-      <nav class="tabs" id="tabs">
-        <button data-view="setup" class="active"><svg><use href="#i-doc" /></svg>Session</button>
-        <button data-view="live"><svg><use href="#i-wave" /></svg>Live</button>
-        <button data-view="history"><svg><use href="#i-clock" /></svg>History</button>
-        <button data-view="settings"><svg><use href="#i-sliders" /></svg>Settings</button>
-      </nav>
+      <div class="dash">
+        <nav class="side" id="tabs">
+          <button data-view="setup" class="active"><svg><use href="#i-doc" /></svg>New session</button>
+          <button data-view="history"><svg><use href="#i-clock" /></svg>History</button>
+          <button data-view="settings"><svg><use href="#i-sliders" /></svg>Settings</button>
+          <div class="side-foot" id="version"></div>
+        </nav>
 
-      <!-- SESSION SETUP -->
-      <section class="view active" id="view-setup">
-        <div class="scroll">
-          <div class="callout hidden" id="keysCallout">
-            <svg><use href="#i-key" /></svg>
-            <div><strong>Connect your API keys</strong><span>Anthropic and Deepgram keys are required before starting a session.</span></div>
-            <button class="btn btn-sm" id="btnGoSettings">Open settings</button>
+        <main class="dash-main">
+          <div class="live-banner hidden" id="liveBanner">
+            <span class="live-dot"></span>
+            <div><strong>Session in progress</strong><span id="liveBannerText">Still listening in the background.</span></div>
+            <button class="btn btn-primary btn-sm" id="btnReturn">Return to session</button>
+            <button class="btn btn-danger btn-sm" id="btnEndFromDash">End</button>
           </div>
 
-          <div class="section">
-            <div class="section-title">Session type</div>
-            <div class="mode-grid" id="modeSeg">
-              <button class="mode-card active" data-mode="interview">
-                <svg><use href="#i-briefcase" /></svg>
-                <span class="mode-name">Interview</span>
-                <span class="mode-desc">Answers tailored to your resume</span>
-              </button>
-              <button class="mode-card" data-mode="meeting">
-                <svg><use href="#i-users" /></svg>
-                <span class="mode-name">Meeting</span>
-                <span class="mode-desc">Sales, client and team calls</span>
-              </button>
-              <button class="mode-card" data-mode="mock">
-                <svg><use href="#i-target" /></svg>
-                <span class="mode-name">Practice</span>
-                <span class="mode-desc">Mock interview with feedback</span>
-              </button>
-            </div>
-          </div>
+          <!-- SESSION SETUP -->
+          <section class="view active" id="view-setup">
+            <div class="scroll">
+              <div class="page">
+                <h1 class="page-title">New session</h1>
+                <p class="page-sub">Set up the call, then press Start. The assistant opens as a small overlay at the top of your screen.</p>
 
-          <div class="section">
-            <div class="section-title">Details</div>
-            <div class="field">
-              <label for="sessTitle">Session name</label>
-              <input id="sessTitle" placeholder="Acme Corp — Backend Engineer, round 2" />
-            </div>
-            <div class="grid-2">
-              <div class="field"><label for="pName">Your name</label><input id="pName" /></div>
-              <div class="field"><label for="pRole">Position</label><input id="pRole" placeholder="Senior Backend Engineer" /></div>
-            </div>
-            <div class="field"><label for="pCompany">Company</label><input id="pCompany" /></div>
-            <div class="grid-2" id="mockOpts">
-              <div class="field">
-                <label for="mockCount">Number of questions</label>
-                <select id="mockCount"><option>4</option><option selected>6</option><option>8</option><option>10</option></select>
+                <div class="callout hidden" id="keysCallout">
+                  <svg><use href="#i-key" /></svg>
+                  <div><strong>Connect your API keys</strong><span>A Deepgram key plus a key for your chosen AI model (Gemini or Anthropic) are required before starting a session.</span></div>
+                  <button class="btn btn-sm" id="btnGoSettings">Open settings</button>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Session type</div>
+                  <div class="mode-grid" id="modeSeg">
+                    <button class="mode-card active" data-mode="interview">
+                      <svg><use href="#i-briefcase" /></svg>
+                      <span class="mode-name">Interview</span>
+                      <span class="mode-desc">Answers tailored to your resume and the job</span>
+                    </button>
+                    <button class="mode-card" data-mode="meeting">
+                      <svg><use href="#i-users" /></svg>
+                      <span class="mode-name">Regular call</span>
+                      <span class="mode-desc">Meetings, sales and client calls (no resume)</span>
+                    </button>
+                    <button class="mode-card" data-mode="mock">
+                      <svg><use href="#i-target" /></svg>
+                      <span class="mode-name">Mock interview</span>
+                      <span class="mode-desc">Practice out loud with an AI interviewer</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Details</div>
+                  <div class="field">
+                    <label for="sessTitle">Session name</label>
+                    <input id="sessTitle" placeholder="Acme Corp — Backend Engineer, round 2" />
+                  </div>
+                  <div class="grid-3">
+                    <div class="field"><label for="pName">Your name</label><input id="pName" /></div>
+                    <div class="field"><label for="pRole">Position</label><input id="pRole" placeholder="Senior Backend Engineer" /></div>
+                    <div class="field"><label for="pCompany">Company</label><input id="pCompany" /></div>
+                  </div>
+                  <div class="grid-3">
+                    <div class="field"><label>Call language</label><select data-setting="language"></select></div>
+                    <div class="field"><label>AI model</label><select data-setting="model"></select></div>
+                    <div class="field"><label>Answer format</label><select data-setting="answerStyle"></select></div>
+                  </div>
+                  <div class="grid-2" id="mockOpts">
+                    <div class="field">
+                      <label for="mockCount">Number of questions</label>
+                      <select id="mockCount"><option>4</option><option selected>6</option><option>8</option><option>10</option></select>
+                    </div>
+                    <div class="field"><label for="mockVoice">Interviewer voice</label><select id="mockVoice"></select></div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Context</div>
+                  <div class="field" id="resumeField">
+                    <div class="label-row">
+                      <label for="pResume">Resume</label>
+                      <button class="link-btn" id="btnImportResume"><svg><use href="#i-upload" /></svg>Import PDF or Word</button>
+                    </div>
+                    <textarea id="pResume" rows="5" placeholder="Paste your resume, or import a file"></textarea>
+                    <div class="field-help" id="resumeInfo"></div>
+                  </div>
+                  <div class="field" id="jdField">
+                    <label for="pJD">Job description</label>
+                    <textarea id="pJD" rows="4" placeholder="Paste the job posting"></textarea>
+                  </div>
+                  <div class="field">
+                    <div class="label-row">
+                      <label for="pDocs">Documents</label>
+                      <button class="link-btn" id="btnImportDoc"><svg><use href="#i-upload" /></svg>Add PDF, Word or text file</button>
+                    </div>
+                    <textarea id="pDocs" rows="3" placeholder="Briefs, notes, product info or playbooks to reference during the call"></textarea>
+                    <div class="field-help" id="docsInfo"></div>
+                  </div>
+                  <div class="field">
+                    <div class="label-row">
+                      <label for="pInstr">Instructions</label>
+                      <span class="counter" id="instrCount">0 / 20,000</span>
+                    </div>
+                    <textarea id="pInstr" rows="3" maxlength="20000" placeholder="How answers should sound — e.g. concise, use Python examples, mention my AWS certification"></textarea>
+                  </div>
+                </div>
               </div>
-              <div class="field"><label for="mockVoice">Interviewer voice</label><select id="mockVoice"></select></div>
             </div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">Context</div>
-            <div class="field">
-              <div class="label-row">
-                <label for="pResume">Resume</label>
-                <button class="link-btn" id="btnImportResume"><svg><use href="#i-upload" /></svg>Import PDF or Word</button>
+            <footer class="footer">
+              <div class="page footer-row">
+                <p class="footnote">Use headphones so your microphone doesn't pick up the other side of the call.</p>
+                <button class="btn btn-primary btn-lg" id="btnStart">Start session</button>
               </div>
-              <textarea id="pResume" rows="5" placeholder="Paste your resume, or import a file"></textarea>
-              <div class="field-help" id="resumeInfo"></div>
+            </footer>
+          </section>
+
+          <!-- HISTORY -->
+          <section class="view" id="view-history">
+            <div class="scroll">
+              <div class="page" id="historyList"></div>
+              <div class="page hidden" id="historyDetail"></div>
             </div>
-            <div class="field">
-              <label for="pJD">Job description</label>
-              <textarea id="pJD" rows="4" placeholder="Paste the job posting"></textarea>
-            </div>
-            <div class="field">
-              <div class="label-row">
-                <label for="pInstr">Instructions</label>
-                <span class="counter" id="instrCount">0 / 20,000</span>
+          </section>
+
+          <!-- SETTINGS -->
+          <section class="view" id="view-settings">
+            <div class="scroll">
+              <div class="page">
+                <h1 class="page-title">Settings</h1>
+                <div class="group">
+                  <div class="group-title">Connections</div>
+                  <div class="rows">
+                    <div class="row stacked">
+                      <div class="row-text"><span class="row-label">Gemini API key</span><span class="row-desc">Free from aistudio.google.com — used when a Gemini model is selected</span></div>
+                      <input id="sGemini" type="password" placeholder="Paste key" spellcheck="false" />
+                    </div>
+                    <div class="row stacked">
+                      <div class="row-text"><span class="row-label">Anthropic API key</span><span class="row-desc">Used when a Claude model is selected</span></div>
+                      <input id="sAnthropic" type="password" placeholder="sk-ant-…" spellcheck="false" />
+                    </div>
+                    <div class="row stacked">
+                      <div class="row-text"><span class="row-label">Deepgram API key</span><span class="row-desc">Live speech-to-text for both sides of the call</span></div>
+                      <input id="sDeepgram" type="password" placeholder="Paste key" spellcheck="false" />
+                    </div>
+                  </div>
+                  <div class="row-note">Keys are encrypted with Windows Data Protection and never leave this PC except to call these services. Keys in a <code>.env</code> file (project folder, next to the .exe, or AppData) are loaded automatically and take priority.</div>
+                </div>
+
+                <div class="group">
+                  <div class="group-title">Answers</div>
+                  <div class="rows">
+                    <div class="row">
+                      <div class="row-text"><span class="row-label">AI model</span><span class="row-desc">Lighter models respond faster</span></div>
+                      <select data-setting="model"></select>
+                    </div>
+                    <div class="row">
+                      <div class="row-text"><span class="row-label">Response speed</span><span class="row-desc">Fast is best for live answers</span></div>
+                      <select data-setting="effort">
+                        <option value="low">Fast</option>
+                        <option value="medium">Balanced</option>
+                        <option value="high">Thorough</option>
+                      </select>
+                    </div>
+                    <div class="row">
+                      <div class="row-text"><span class="row-label">Answer format</span><span class="row-desc">How suggestions are written</span></div>
+                      <select data-setting="answerStyle"></select>
+                    </div>
+                    <div class="row">
+                      <div class="row-text"><span class="row-label">Call language</span><span class="row-desc">One language at a time, or auto-detect</span></div>
+                      <select data-setting="language"></select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="group">
+                  <div class="group-title">Privacy and window</div>
+                  <div class="rows">
+                    <label class="row switch-row">
+                      <div class="row-text"><span class="row-label">Hide from screen sharing</span><span class="row-desc">Invisible in Zoom, Teams, Meet, Webex and recordings</span></div>
+                      <span class="switch"><input type="checkbox" id="sHideShare" /><span class="track"><span class="thumb"></span></span></span>
+                    </label>
+                    <label class="row switch-row">
+                      <div class="row-text"><span class="row-label">Hide from taskbar</span><span class="row-desc">Use Ctrl+Shift+Space to show the window</span></div>
+                      <span class="switch"><input type="checkbox" id="sHideTaskbar" /><span class="track"><span class="thumb"></span></span></span>
+                    </label>
+                    <div class="row">
+                      <div class="row-text"><span class="row-label">Overlay opacity</span><span class="row-desc" id="opacityValue">96%</span></div>
+                      <input type="range" id="sOpacity" min="0.4" max="1" step="0.02" />
+                    </div>
+                    <div class="row">
+                      <div class="row-text"><span class="row-label">Dashboard theme</span></div>
+                      <select id="sTheme">
+                        <option value="system">System</option>
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="group">
+                  <div class="group-title">Keyboard shortcuts (during a session)</div>
+                  <div class="rows">
+                    <div class="shortcut"><span>Show or hide window (always)</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div>
+                    <div class="shortcut"><span>Answer now</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></div>
+                    <div class="shortcut"><span>Screenshot and solve</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd></div>
+                    <div class="shortcut"><span>Chat (type a question)</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>K</kbd></div>
+                    <div class="shortcut"><span>Previous / next answer</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>←</kbd><kbd>→</kbd></div>
+                    <div class="shortcut"><span>Scroll answer</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>↑</kbd><kbd>↓</kbd></div>
+                    <div class="shortcut"><span>Clear answers</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Backspace</kbd></div>
+                    <div class="shortcut"><span>Auto-answer on / off</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>A</kbd></div>
+                    <div class="shortcut"><span>Click-through on / off</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>X</kbd></div>
+                    <div class="shortcut"><span>Move overlay</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>Arrows</kbd></div>
+                  </div>
+                </div>
               </div>
-              <textarea id="pInstr" rows="3" maxlength="20000" placeholder="How answers should sound — e.g. concise, use Python examples, mention my AWS certification"></textarea>
             </div>
-          </div>
-        </div>
-        <footer class="footer">
-          <button class="btn btn-primary btn-block" id="btnStart">Start session</button>
-          <p class="footnote">Use headphones so your microphone doesn't pick up the other side of the call.</p>
-        </footer>
-      </section>
-
-      <!-- LIVE -->
-      <section class="view" id="view-live">
-        <div class="live-bar">
-          <div class="level" title="Computer audio — the other side of the call">
-            <svg><use href="#i-speaker" /></svg><span class="level-label" id="themLabel">Interviewer</span>
-            <span class="level-bar" id="meter0"></span>
-          </div>
-          <div class="level" title="Your microphone">
-            <svg><use href="#i-mic" /></svg><span class="level-label">You</span>
-            <span class="level-bar" id="meter1"></span>
-          </div>
-          <label class="switch" id="autoWrap" title="Ctrl+Shift+A">
-            <span>Auto-answer</span>
-            <input type="checkbox" id="autoToggle" /><span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <details class="transcript-panel" id="transcriptBox" open>
-          <summary><svg class="chev"><use href="#i-chev-down" /></svg>Transcript<span class="count" id="lineCount"></span></summary>
-          <div class="transcript" id="transcript"></div>
-        </details>
-
-        <div class="feed" id="answers"></div>
-        <div class="empty" id="feedEmpty">
-          <div class="empty-icon"><svg><use href="#i-wave" /></svg></div>
-          <div class="empty-title" id="emptyTitle">Listening for questions</div>
-          <div class="empty-text" id="emptyText">Suggested answers appear here as soon as a question is asked.</div>
-        </div>
-
-        <div class="composer">
-          <div class="actions">
-            <button class="btn btn-primary" id="btnAnswer" title="Ctrl+Shift+Enter"><svg><use href="#i-msg" /></svg>Answer<kbd>Ctrl ⇧ ↵</kbd></button>
-            <button class="btn" id="btnShot" title="Ctrl+Shift+S"><svg><use href="#i-monitor" /></svg>Capture screen</button>
-            <button class="btn btn-primary hidden" id="btnMockDone"><svg><use href="#i-check" /></svg>Done answering</button>
-            <button class="btn btn-danger" id="btnEnd">End session</button>
-          </div>
-          <form class="ask" id="chatForm">
-            <input id="chatInput" placeholder="Ask privately…" autocomplete="off" />
-            <button class="icon-btn" type="submit" title="Send"><svg><use href="#i-send" /></svg></button>
-          </form>
-        </div>
-      </section>
-
-      <!-- HISTORY -->
-      <section class="view" id="view-history">
-        <div class="scroll" id="historyList"></div>
-        <div class="scroll hidden" id="historyDetail"></div>
-      </section>
-
-      <!-- SETTINGS -->
-      <section class="view" id="view-settings">
-        <div class="scroll">
-          <div class="group">
-            <div class="group-title">Connections</div>
-            <div class="rows">
-            <div class="row stacked">
-              <div class="row-text"><span class="row-label">Anthropic API key</span><span class="row-desc">Generates answers, notes and practice questions</span></div>
-              <input id="sAnthropic" type="password" placeholder="sk-ant-…" spellcheck="false" />
-            </div>
-            <div class="row stacked">
-              <div class="row-text"><span class="row-label">Deepgram API key</span><span class="row-desc">Live speech-to-text for both sides of the call</span></div>
-              <input id="sDeepgram" type="password" placeholder="Paste key" spellcheck="false" />
-            </div>
-            </div>
-            <div class="row-note">Keys are encrypted with Windows Data Protection and never leave this PC except to call these services.</div>
-          </div>
-
-          <div class="group">
-            <div class="group-title">Answers</div>
-            <div class="rows">
-            <div class="row">
-              <div class="row-text"><span class="row-label">Model</span><span class="row-desc">Quality versus speed and cost</span></div>
-              <select id="sModel">
-                <option value="claude-opus-5-5">Claude Opus 5.5</option>
-                <option value="claude-sonnet-5-5">Claude Sonnet 5.5</option>
-                <option value="claude-haiku-5-5">Claude Haiku 5.5</option>
-              </select>
-            </div>
-            <div class="row">
-              <div class="row-text"><span class="row-label">Response speed</span><span class="row-desc">Faster responses think less</span></div>
-              <select id="sEffort">
-                <option value="low">Fast</option>
-                <option value="medium">Balanced</option>
-                <option value="high">Thorough</option>
-              </select>
-            </div>
-            <div class="row">
-              <div class="row-text"><span class="row-label">Answer format</span><span class="row-desc">How suggestions are written</span></div>
-              <select id="sStyle">
-                <option value="spoken">Talking points</option>
-                <option value="bullets">Keywords only</option>
-                <option value="detailed">Detailed</option>
-              </select>
-            </div>
-            <div class="row">
-              <div class="row-text"><span class="row-label">Call language</span><span class="row-desc">Language spoken on the call</span></div>
-              <select id="sLang">
-                <option value="en">English</option>
-                <option value="en-IN">English (India)</option>
-                <option value="multi">Multiple / auto-detect</option>
-                <option value="hi">Hindi</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="pt">Portuguese</option>
-                <option value="it">Italian</option>
-                <option value="nl">Dutch</option>
-                <option value="ja">Japanese</option>
-                <option value="ru">Russian</option>
-              </select>
-            </div>
-            </div>
-          </div>
-
-          <div class="group">
-            <div class="group-title">Window</div>
-            <div class="rows">
-            <label class="row switch-row">
-              <div class="row-text"><span class="row-label">Hide from screen sharing</span><span class="row-desc">Invisible in Zoom, Teams, Meet and recordings</span></div>
-              <span class="switch"><input type="checkbox" id="sHideShare" /><span class="track"><span class="thumb"></span></span></span>
-            </label>
-            <label class="row switch-row">
-              <div class="row-text"><span class="row-label">Hide from taskbar</span><span class="row-desc">Use Ctrl+Shift+Space to show the window</span></div>
-              <span class="switch"><input type="checkbox" id="sHideTaskbar" /><span class="track"><span class="thumb"></span></span></span>
-            </label>
-            <div class="row">
-              <div class="row-text"><span class="row-label">Opacity</span><span class="row-desc" id="opacityValue">96%</span></div>
-              <input type="range" id="sOpacity" min="0.4" max="1" step="0.02" />
-            </div>
-            <div class="row">
-              <div class="row-text"><span class="row-label">Theme</span></div>
-              <select id="sTheme">
-                <option value="system">System</option>
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-              </select>
-            </div>
-            </div>
-          </div>
-
-          <div class="group">
-            <div class="group-title">Keyboard shortcuts</div>
-            <div class="rows">
-            <div class="shortcut"><span>Show or hide window</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div>
-            <div class="shortcut"><span>Answer now</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></div>
-            <div class="shortcut"><span>Capture screen</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd></div>
-            <div class="shortcut"><span>Toggle auto-answer</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>A</kbd></div>
-            <div class="shortcut"><span>Toggle click-through</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>X</kbd></div>
-            <div class="shortcut"><span>Move window</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Arrows</kbd></div>
-            </div>
-          </div>
-          <p class="version" id="version"></p>
-        </div>
-      </section>
-
-      <div class="toast hidden" id="toast"><svg id="toastIcon"><use href="#i-check" /></svg><span id="toastText"></span></div>
+          </section>
+        </main>
+      </div>
     </div>
+
+    <!-- ================================================================ LIVE OVERLAY -->
+    <div class="ov" id="overlay">
+      <!-- Main toolbar (drag anywhere that is not a button) -->
+      <div class="ov-bar ov-main">
+        <div class="ov-inds">
+          <span class="ind" id="ind0" title="Computer audio (the other side of the call)"><svg><use href="#i-monitor" /></svg><i></i></span>
+          <span class="ind" id="ind1" title="Your microphone"><svg><use href="#i-mic" /></svg><i></i></span>
+        </div>
+        <span class="ov-timer" id="ovTimer">00:00</span>
+        <button class="ov-btn" id="oAnswer" title="Answer the latest question">Answer<kbd>Ctrl ⇧ ↵</kbd></button>
+        <button class="ov-btn" id="oShot" title="Capture the screen and solve what is on it">Screenshot<kbd>Ctrl ⇧ S</kbd></button>
+        <button class="ov-btn" id="oChat" title="Type a question privately">Chat<kbd>Ctrl ⇧ K</kbd></button>
+        <button class="ov-btn ov-primary hidden" id="oMockDone">Done answering</button>
+        <span class="ov-flex"></span>
+        <span class="ov-icon ov-drag" title="Drag to move"><svg><use href="#i-move" /></svg></span>
+        <button class="ov-icon" id="oCollapse" title="Collapse"><svg><use href="#i-collapse" /></svg></button>
+        <button class="ov-icon" id="oMenu" title="More"><svg><use href="#i-more" /></svg></button>
+        <button class="ov-end" id="oEnd" title="End the session and save it">End</button>
+      </div>
+
+      <!-- Menu -->
+      <div class="ov-panel ov-menu hidden" id="ovMenu">
+        <div class="ov-menu-grid">
+          <label class="ov-field"><span>Language</span><select data-setting="language"></select></label>
+          <label class="ov-field"><span>AI model</span><select data-setting="model"></select></label>
+          <label class="ov-field"><span>Answer format</span><select data-setting="answerStyle"></select></label>
+          <label class="ov-field"><span>Opacity</span><input type="range" id="ovOpacity" min="0.4" max="1" step="0.02" /></label>
+        </div>
+        <div class="ov-menu-row">
+          <label class="ov-switch"><input type="checkbox" id="autoToggle" /><span class="track"><span class="thumb"></span></span>Auto-answer<kbd>Ctrl ⇧ A</kbd></label>
+          <span class="ov-flex"></span>
+          <button class="ov-btn sm" id="oClickThrough" title="Clicks pass through the overlay (Ctrl+Shift+X to undo)"><svg><use href="#i-pointer" /></svg>Click-through</button>
+          <button class="ov-btn sm" id="oDashboard" title="Back to the dashboard; the session keeps running"><svg><use href="#i-home" /></svg>Leave for now</button>
+        </div>
+      </div>
+
+      <div class="ov-body" id="ovBody">
+        <!-- Live transcript strip -->
+        <div class="ov-bar ov-strip">
+          <span class="ov-listen" id="ovListen" title="Listening"><svg><use href="#i-bars" /></svg></span>
+          <div class="chips" id="chips"><span class="chip-empty">Listening…</span></div>
+          <button class="ov-btn sm" id="oClearT" title="Clear the transcript strip">Clear</button>
+          <button class="ov-icon" id="oTranscript" title="Show full transcript"><svg><use href="#i-expand" /></svg></button>
+        </div>
+
+        <div class="ov-panel ov-transcript hidden" id="ovTranscript"><div class="transcript" id="transcript"></div></div>
+
+        <form class="ov-bar ov-chat hidden" id="chatForm">
+          <svg class="ov-chat-icon"><use href="#i-msg" /></svg>
+          <input id="chatInput" placeholder="Ask anything privately — the other side never sees it" autocomplete="off" />
+          <button class="ov-btn sm" type="submit">Send<kbd>↵</kbd></button>
+        </form>
+
+        <!-- Answers -->
+        <div class="ov-panel ov-answers" id="ovAnswers">
+          <div class="ov-ahead">
+            <button class="ov-btn sm" id="oPrev" title="Previous answer (Ctrl+Alt+←)"><svg><use href="#i-chev-left" /></svg><kbd>Ctrl Alt ←</kbd></button>
+            <button class="ov-btn sm" id="oNext" title="Next answer (Ctrl+Alt+→)"><kbd>Ctrl Alt →</kbd><svg><use href="#i-chev-right" /></svg></button>
+            <span class="ov-pos" id="ovPos"></span>
+            <span class="ov-flex"></span>
+            <span class="ov-auto" id="ovAutoBadge"></span>
+            <button class="ov-btn sm" id="oClearA" title="Clear answers (Ctrl+Shift+Backspace)">Clear<kbd>Ctrl ⇧ ⌫</kbd></button>
+            <button class="ov-icon" id="oExpand" title="Expand"><svg><use href="#i-expand" /></svg></button>
+          </div>
+          <div class="ov-card hidden" id="ovCard">
+            <div class="ov-q">
+              <svg><use href="#i-msg" /></svg>
+              <span id="ovQ"></span>
+              <span class="typing"><i></i><i></i><i></i></span>
+              <button class="ov-icon sm" id="oCopy" title="Copy answer"><svg><use href="#i-copy" /></svg></button>
+            </div>
+            <div class="ov-a prose" id="ovA"></div>
+            <div class="ov-foot">
+              <span id="ovKind">Answer</span><span>·</span><span id="ovTime"></span>
+              <button class="ov-icon sm" id="oUp" title="Good answer"><svg><use href="#i-thumb-up" /></svg></button>
+              <button class="ov-icon sm" id="oDown" title="Bad answer"><svg><use href="#i-thumb-down" /></svg></button>
+            </div>
+          </div>
+          <div class="ov-empty" id="ovEmpty">
+            <div class="ov-empty-title" id="emptyTitle">Listening for questions</div>
+            <div class="ov-empty-text" id="emptyText">Answers appear here as soon as the interviewer asks something.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast hidden" id="toast"><svg id="toastIcon"><use href="#i-check" /></svg><span id="toastText"></span></div>
 
     <script src="../../node_modules/marked/lib/marked.umd.js"></script>
     <script src="../../node_modules/dompurify/dist/purify.min.js"></script>

@@ -37,6 +37,9 @@ contextBridge.exposeInMainWorld('api', {
 
   onHotkey: on('hotkey'),
   onClickThrough: on('click-through'),
+  setWindowMode: (mode) => ipcRenderer.send('win:mode', mode),
+  fitWindow: (size) => ipcRenderer.send('win:fit', size),
+  setClickThrough: (on) => ipcRenderer.send('win:click-through', on),
   minimize: () => ipcRenderer.send('win:minimize'),
   quit: () => ipcRenderer.send('win:quit'),
 });

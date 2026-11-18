@@ -7,28 +7,41 @@ Same feature set as ParakeetAI's desktop assistant, built from scratch:
 
 | Feature | How it works here |
 |---|---|
-| Live transcript (both sides) | Computer audio (WASAPI loopback, via Electron) = interviewer, microphone = you, streamed as 2 channels to Deepgram Nova-3 |
-| Auto answer | Detects when the interviewer finishes a question, then streams an answer from Claude |
+| Live overlay | Dark floating toolbar centered at the top of the screen: mic/speaker indicators, timer, Answer, Screenshot, Chat, move, collapse, menu, End. Sized to its content so it never blocks clicks around it |
+| Live transcript (both sides) | Computer audio (WASAPI loopback, via Electron) = interviewer, microphone = you, streamed as 2 channels to Deepgram Nova-3. Latest words as chips; full transcript on demand; Clear |
+| Auto answer | Detects when the interviewer finishes a question, then streams an answer (Gemini or Claude). Toggle in the overlay |
 | Manual answer | `Answer` button / `Ctrl+Shift+Enter` answers the latest question |
-| Resume / JD / instructions | Import PDF/DOCX/TXT or paste; instructions up to 20,000 characters; cached with prompt caching |
+| Answer panel | One answer at a time; browse previous/next, copy, rate 👍/👎, Clear, expand to a larger view |
+| Resume / JD / documents / instructions | Import PDF/DOCX/TXT or paste; extra reference documents; instructions up to 20,000 characters |
 | Coding & screen questions | `Screenshot` / `Ctrl+Shift+S` captures the screen and solves what's on it (code, MCQ, design, errors) |
-| Private chat | Type any question to the AI during the call |
-| Modes | Interview, Meeting / call, Mock interview (AI interviewer speaks questions, listens, scores you) |
+| Private chat | `Chat` / `Ctrl+Shift+K`: type any question to the AI during the call |
+| Modes | Interview (uses resume), Regular call (no resume), Mock interview (AI interviewer speaks, listens, gives feedback) |
+| Per-session choices | Call language (57 languages + auto-detect), AI model, answer format (Bullet points / Script + bullets / Full script); also changeable mid-call from the overlay menu |
+| Leave for now | Back to the dashboard while the session keeps listening; *Return to session* reopens the overlay |
 | AI notes | Summary, questions asked, key points and next steps after each call |
-| History | All sessions saved locally, export as Markdown |
+| History | All sessions saved locally; filter by mode, search by title/role/company; duration and answer count; save transcript as Markdown |
 | Hidden from screen share | `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`: Zoom/Teams/Meet/OBS see nothing (Windows 10 2004+ / Server 2022+) |
-| Other | Hide from taskbar, opacity, click-through, move with hotkeys, 12 call languages + auto/multilingual |
+| Other | Hide from taskbar, overlay opacity, click-through, move with drag or hotkeys |
+
+Not included (web-service features of ParakeetAI, not part of the desktop assistant): resume maker, headshots,
+credits/plans, mobile web app.
 
 Works with any call app (Zoom, Teams, Meet, Webex, browser calls) because it listens to the PC's audio output. No bot joins the meeting.
 
 ## What you need
 
-1. **Anthropic API key**: https://console.anthropic.com → API keys.
+1. An AI key, either one:
+   - **Gemini API key** (free tier): https://aistudio.google.com → Get API key. A Gemini app subscription (Google AI Pro) does not include API access; the API key is separate.
+   - **Anthropic API key**: https://console.anthropic.com → API keys.
 2. **Deepgram API key** for live transcription: https://console.deepgram.com (new accounts get free credit).
 3. Windows 10 (2004 or newer) / Windows 11 / Windows Server 2022+, x64.
 4. **Headphones** strongly recommended, so the mic does not pick up the interviewer too.
 
-Enter both keys in **Settings** inside the app. They are stored encrypted with Windows DPAPI.
+Enter the keys in **Settings** inside the app (stored encrypted with Windows DPAPI), **or** put them in a `.env` file
+so you never have to type them: copy `.env.example` to `.env` and fill in `GEMINI_API_KEY`, `DEEPGRAM_API_KEY`
+(and optionally `ANTHROPIC_API_KEY`). The app looks for `.env` in the project folder, next to the `.exe`, then in
+`%APPDATA%\Interview Pilot`. Keys from `.env` take priority over Settings and are not copied into the settings file.
+`.env` is git-ignored; never commit it.
 
 ## Install
 
@@ -37,26 +50,43 @@ Windows SmartScreen will warn because the app is not code-signed: *More info →
 
 ## Use
 
-1. **Setup** tab: pick a mode, fill name/role/company, import your resume, paste the job description.
-2. Press **Start session**. Join your call as normal.
-3. Questions from the interviewer appear in the transcript; answers appear automatically (toggle **Auto answer**).
-4. Press **End** → the session is saved and AI notes are generated (History tab).
+1. The app opens as a dashboard centered on the screen. **New session**: pick a mode, fill name/role/company,
+   language, model and answer format, import your resume, paste the job description, add documents.
+2. Press **Start session**: the window becomes the overlay at the top-center of the screen. Join your call as normal.
+3. The interviewer's words scroll by in the transcript strip; answers appear automatically (toggle **Auto-answer**).
+4. Press **End** → the session is saved and AI notes are generated (History).
 
 ### Shortcuts (work even when the window is not focused)
+
+`Ctrl+Shift+Space` works at any time. The rest are active only while the overlay is showing, so they never take
+keys away from other apps otherwise. They avoid `Ctrl+Shift+Arrows`, which selects words in code editors.
 
 | Keys | Action |
 |---|---|
 | `Ctrl+Shift+Space` | Show / hide window |
 | `Ctrl+Shift+Enter` | Answer now |
 | `Ctrl+Shift+S` | Screenshot & solve |
+| `Ctrl+Shift+K` | Chat (type a question) |
+| `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next answer |
+| `Ctrl+Alt+↑` / `Ctrl+Alt+↓` | Scroll the answer |
+| `Ctrl+Shift+Backspace` | Clear answers |
 | `Ctrl+Shift+A` | Auto answer on/off |
 | `Ctrl+Shift+X` | Click-through on/off |
-| `Ctrl+Shift+Arrows` | Move window |
+| `Ctrl+Alt+Shift+Arrows` | Move the overlay |
 
 ### Models
 
-Settings → Model: Claude Opus 5.5 (best quality, default), Sonnet 5.5 (faster), Haiku 5.5 (fastest/cheapest).
-"Depth" controls how much the model thinks: *Fast* is best for live answers.
+Settings or New session → AI model:
+
+- **Gemini Flash-Lite** (default, free tier): fastest, about 1-2 s to the first word on *Fast*.
+- **Gemini Flash** (free tier): stronger, but often overloaded on the free tier. If it fails (503/429) or sends
+  nothing for 20 s, the app retries the request on Flash-Lite automatically.
+- **Claude Opus 5.5** (best quality), **Sonnet 5.5** (faster), **Haiku 5.5** (fastest/cheapest): need an Anthropic key.
+
+Gemini Pro is not offered: the Gemini API free tier has no Pro quota.
+On the free tier, Google may use prompts (including your resume and transcript) to improve its products.
+
+"Response speed" controls how much the model thinks: *Fast* is best for live answers.
 
 ## Windows Server notes
 
