@@ -30,8 +30,9 @@ loadEnvFile();
 const DEFAULT_SETTINGS = {
   anthropicKey: '',
   geminiKey: '',
+  groqKey: '',
   deepgramKey: '',
-  model: 'gemini-flash-lite-latest',
+  model: 'groq:qwen/qwen3.8-27b',
   effort: 'low',
   language: 'en',
   answerStyle: 'spoken', // spoken | bullets | detailed
@@ -43,8 +44,8 @@ const DEFAULT_SETTINGS = {
   profile: { name: '', role: '', company: '', resume: '', jobDescription: '', instructions: '', documents: '' },
 };
 
-const SECRET_FIELDS = ['anthropicKey', 'geminiKey', 'deepgramKey'];
-const ENV_KEYS = { anthropicKey: 'ANTHROPIC_API_KEY', geminiKey: 'GEMINI_API_KEY', deepgramKey: 'DEEPGRAM_API_KEY' };
+const SECRET_FIELDS = ['anthropicKey', 'geminiKey', 'groqKey', 'deepgramKey'];
+const ENV_KEYS = { anthropicKey: 'ANTHROPIC_API_KEY', geminiKey: 'GEMINI_API_KEY', groqKey: 'GROQ_API_KEY', deepgramKey: 'DEEPGRAM_API_KEY' };
 
 function dataDir() {
   return app.getPath('userData');

@@ -20,7 +20,7 @@ Same feature set as ParakeetAI's desktop assistant, built from scratch:
 | Leave for now | Back to the dashboard while the session keeps listening; *Return to session* reopens the overlay |
 | AI notes | Summary, questions asked, key points and next steps after each call |
 | History | All sessions saved locally; filter by mode, search by title/role/company; duration and answer count; save transcript as Markdown |
-| Hidden from screen share | `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`: Zoom/Teams/Meet/OBS see nothing (Windows 10 2004+ / Server 2022+) |
+| Hidden from screen share | `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`: Zoom/Teams/Meet/OBS see nothing (Windows 10 2004+ / Server 2022+). During a session the window is also removed from the taskbar and has no title |
 | Other | Hide from taskbar, overlay opacity, click-through, move with drag or hotkeys |
 
 Not included (web-service features of ParakeetAI, not part of the desktop assistant): resume maker, headshots,
@@ -58,27 +58,34 @@ Windows SmartScreen will warn because the app is not code-signed: *More info →
 
 ### Shortcuts (work even when the window is not focused)
 
-`Ctrl+Shift+Space` works at any time. The rest are active only while the overlay is showing, so they never take
+`Ctrl+Q` and `Ctrl+Shift+Space` work at any time. The rest are active only while the overlay is showing, so they never take
 keys away from other apps otherwise. They avoid `Ctrl+Shift+Arrows`, which selects words in code editors.
 
 | Keys | Action |
 |---|---|
-| `Ctrl+Shift+Space` | Show / hide window |
+| `Ctrl+Q` (or `Ctrl+Shift+Space`) | Hide / show the window. While hidden the session keeps listening and answering |
 | `Ctrl+Shift+Enter` | Answer now |
 | `Ctrl+Shift+S` | Screenshot & solve |
 | `Ctrl+Shift+K` | Chat (type a question) |
 | `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next answer |
-| `Ctrl+Alt+↑` / `Ctrl+Alt+↓` | Scroll the answer |
+| `Ctrl+Alt+↑` / `Ctrl+Alt+↓` | Scroll the answer slowly (hold to keep scrolling, about 220 px per second) |
 | `Ctrl+Shift+Backspace` | Clear answers |
 | `Ctrl+Shift+A` | Auto answer on/off |
 | `Ctrl+Shift+X` | Click-through on/off |
-| `Ctrl+Alt+Shift+Arrows` | Move the overlay |
+| `Ctrl+<` / `Ctrl+>` (comma / full-stop key, with or without Shift) | Move the answer box between its 3 positions: left corner, middle, right corner |
 
 ### Models
 
-Settings or New session → AI model:
+Settings or New session → AI model (Groq Qwen is the default):
 
-- **Gemini Flash-Lite** (default, free tier): fastest, about 1-2 s to the first word on *Fast*.
+- **Qwen 3.8 27B on Groq** (default, free key from console.groq.com, `GROQ_API_KEY`): fastest. Measured about
+  0.2-0.5 s to the first word and a full answer in under 0.6 s, including code and screenshots.
+  Groq's free tier allows about 8,000 tokens per minute per model (roughly 3-5 answers a minute with a resume),
+  so live answers go chosen Groq model → GPT-OSS 20B → GPT-OSS 120B on Groq (each has its own quota) → Gemini
+  Flash-Lite if a Gemini key is set. Post-call notes and PDF import use Gemini, since Groq models can't read PDFs.
+- **GPT-OSS 120B / 20B on Groq**: also fast; 120B is a bit stronger and a bit slower.
+- **Gemini Flash-Lite** (free tier): 0.5-7 s to the first word, depending on Google's free-tier load. The app
+  sends 2 copies of each live question and uses whichever starts first.
 - **Gemini Flash** (free tier): stronger, but often overloaded on the free tier. If it fails (503/429) or sends
   nothing for 20 s, the app retries the request on Flash-Lite automatically.
 - **Claude Opus 5.5** (best quality), **Sonnet 5.5** (faster), **Haiku 5.5** (fastest/cheapest): need an Anthropic key.

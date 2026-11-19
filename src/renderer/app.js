@@ -37,7 +37,8 @@ const LANGUAGES = [
   ['sv', 'Swedish'], ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['vi', 'Vietnamese'],
 ];
 const MODELS = [
-  ['Google Gemini (free tier)', [['gemini-flash-lite-latest', 'Gemini Flash-Lite (fastest)'], ['gemini-flash-latest', 'Gemini Flash']]],
+  ['Groq (free tier, fastest)', [['groq:qwen/qwen3.8-27b', 'Qwen 3.8 27B on Groq (fastest)'], ['groq:openai/gpt-oss-120b', 'GPT-OSS 120B on Groq'], ['groq:openai/gpt-oss-20b', 'GPT-OSS 20B on Groq']]],
+  ['Google Gemini (free tier)', [['gemini-flash-lite-latest', 'Gemini Flash-Lite'], ['gemini-flash-latest', 'Gemini Flash']]],
   ['Anthropic Claude', [['claude-opus-5-5', 'Claude Opus 5.5'], ['claude-sonnet-5-5', 'Claude Sonnet 5.5'], ['claude-haiku-5-5', 'Claude Haiku 5.5']]],
 ];
 const STYLES = [
@@ -48,6 +49,131 @@ const STYLES = [
 
 let settings = null;
 let mode = 'interview'; // interview | meeting | mock
+
+// ---------------------------------------------------------------- stealth: nothing outside the protected window
+// The window is excluded from screen capture, but a few things Chromium/Windows draw in their
+// own separate windows are not: hover tooltips (title="…") and native <select> lists (verified
+// with a screen capture). So tooltips become screen-reader labels, and dropdowns are drawn in
+// the page. The pointer stays the normal arrow (see styles.css).
+
+function stripTooltip(el) {
+  const t = el.getAttribute('title');
+  if (t === null) return;
+  el.setAttribute('aria-label', t);
+  el.removeAttribute('title');
+}
+
+function startTooltipStripper() {
+  $$('[title]').forEach(stripTooltip);
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === 'attributes') stripTooltip(m.target);
+      else {
+        m.addedNodes.forEach((n) => {
+          if (n.nodeType !== 1) return;
+          stripTooltip(n);
+          n.querySelectorAll('[title]').forEach(stripTooltip);
+        });
+      }
+    }
+  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['title'] });
+}
+
+const customSelects = [];
+
+function closeAllSelects() {
+  customSelects.forEach((s) => s._cs.close());
+}
+
+function refreshSelects() {
+  customSelects.forEach((s) => s._cs.update());
+}
+
+// Replaces a native <select> with an in-page dropdown. The <select> stays (hidden) as the source
+// of truth: its options, value and change handlers keep working unchanged.
+function enhanceSelect(sel) {
+  if (sel._cs) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'cs';
+  wrap.innerHTML = `<button type="button" class="cs-btn"><span class="cs-label"></span>${icon('chev-down')}</button>`;
+  sel.after(wrap);
+  sel.classList.add('cs-native');
+  const btn = wrap.firstElementChild;
+  const label = btn.querySelector('.cs-label');
+  let list = null;
+  let active = -1;
+  const opts = () => [...sel.options];
+
+  const update = () => (label.textContent = sel.selectedOptions[0]?.textContent || '');
+  const close = () => {
+    if (!list) return;
+    list.remove();
+    list = null;
+    wrap.classList.remove('open');
+    fitOverlay();
+  };
+  const choose = (o) => {
+    close();
+    if (o && sel.value !== o.value) {
+      sel.value = o.value;
+      update();
+      sel.dispatchEvent(new Event('change'));
+    }
+  };
+  const highlight = () => {
+    list.querySelectorAll('.cs-opt').forEach((el) => el.classList.toggle('active', +el.dataset.i === active));
+    list.querySelector('.cs-opt.active')?.scrollIntoView({ block: 'nearest' });
+  };
+  const open = () => {
+    closeAllSelects();
+    list = document.createElement('div');
+    list.className = 'cs-list';
+    let html = '';
+    let group = null;
+    opts().forEach((o, i) => {
+      const g = o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : null;
+      if (g && g !== group) html += `<div class="cs-group">${esc(g)}</div>`;
+      group = g;
+      html += `<div class="cs-opt${o.selected ? ' selected' : ''}" data-i="${i}">${esc(o.textContent)}</div>`;
+    });
+    list.innerHTML = html;
+    wrap.appendChild(list);
+    wrap.classList.add('open');
+    if (!wrap.closest('.ov')) {
+      // dashboard: open upwards when there is no room below
+      const r = list.getBoundingClientRect();
+      if (r.bottom > window.innerHeight - 8 && wrap.getBoundingClientRect().top > r.height + 8) list.classList.add('up');
+    }
+    list.querySelector('.selected')?.scrollIntoView({ block: 'nearest' });
+    active = sel.selectedIndex;
+    list.onmousedown = (e) => e.preventDefault(); // keep focus on the button
+    list.onclick = (e) => {
+      const el = e.target.closest('.cs-opt');
+      if (el) choose(opts()[+el.dataset.i]);
+    };
+    fitOverlay();
+  };
+
+  btn.onclick = () => (list ? close() : open());
+  btn.onkeydown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!list) open();
+      active = Math.max(0, Math.min(sel.options.length - 1, active + (e.key === 'ArrowDown' ? 1 : -1)));
+      highlight();
+    } else if (e.key === 'Enter' && list && active >= 0) {
+      e.preventDefault();
+      choose(opts()[active]);
+    } else if (e.key === 'Escape') close();
+  };
+  sel._cs = { update, close };
+  customSelects.push(sel);
+  update();
+}
+
+document.addEventListener('mousedown', (e) => {
+  if (!e.target.closest('.cs')) closeAllSelects();
+});
 
 // ---------------------------------------------------------------- feedback
 function toast(message, kind = 'success', ms = 3200) {
@@ -79,10 +205,12 @@ function applyTheme(theme) {
   else delete document.documentElement.dataset.theme;
 }
 
-// Key needed for the selected model: Gemini models use the Gemini key, Claude models the Anthropic key.
+// Key needed for the selected model: Groq, Gemini or Anthropic.
 function aiKeyMissing(s = settings) {
   if (!s) return true;
-  return String(s.model || '').startsWith('gemini') ? !s.geminiKey : !s.anthropicKey;
+  const m = String(s.model || '');
+  if (m.startsWith('groq:')) return !s.groqKey;
+  return m.startsWith('gemini') ? !s.geminiKey : !s.anthropicKey;
 }
 
 function updateKeysCallout() {
@@ -112,7 +240,7 @@ function enterDashboard() {
 function fitOverlay() {
   if (windowMode !== 'overlay') return;
   const h = Math.ceil(document.body.getBoundingClientRect().height);
-  const width = expanded ? 1000 : 720;
+  const width = expanded ? 1040 : 780;
   if (h === fitOverlay.h && width === fitOverlay.w) return; // only resize when something changed
   fitOverlay.h = h;
   fitOverlay.w = width;
@@ -145,6 +273,7 @@ function syncSettingControls() {
   $('sOpacity').value = op;
   $('ovOpacity').value = op;
   $('opacityValue').textContent = `${Math.round(op * 100)}%`;
+  refreshSelects();
 }
 
 async function saveSetting(key, value) {
@@ -172,12 +301,14 @@ async function loadSettingsIntoForms() {
   $('pInstr').value = p.instructions;
   updateInstrCount();
 
+  $('sGroq').value = settings.groqKey || '';
   $('sGemini').value = settings.geminiKey || '';
   $('sAnthropic').value = settings.anthropicKey;
   $('sDeepgram').value = settings.deepgramKey;
   $('sHideShare').checked = settings.hideFromScreenShare;
   $('sHideTaskbar').checked = settings.hideFromTaskbar;
   $('sTheme').value = settings.theme || 'system';
+  refreshSelects();
   $('autoToggle').checked = settings.autoAnswer;
   syncSettingControls();
   updateAutoBadge();
@@ -206,6 +337,7 @@ function autosaveFields(message = 'Settings saved') {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     settings = await api.saveSettings({
+      groqKey: $('sGroq').value.trim(),
       geminiKey: $('sGemini').value.trim(),
       anthropicKey: $('sAnthropic').value.trim(),
       deepgramKey: $('sDeepgram').value.trim(),
@@ -427,6 +559,22 @@ function addAnswer(kind, question, onDone) {
   return item.id;
 }
 
+// Safety net for the most obvious "written by AI" punctuation in the prose of an answer:
+// em/en dashes become commas, semicolons become full stops. Code (fenced blocks, including one
+// still streaming in, and `inline code`) is never touched.
+function tidy(text) {
+  return String(text || '')
+    .split(/(```[\s\S]*?(?:```|$)|`[^`\n]*`)/)
+    .map((part, i) => {
+      if (i % 2 === 1) return part; // code
+      return part
+        .replace(/\s*[—–]\s*/g, ', ')
+        .replace(/;\s+([a-z])/g, (_, c) => '. ' + c.toUpperCase())
+        .replace(/;(\s|$)/g, '.$1');
+    })
+    .join('');
+}
+
 // Removes an answer (used when a half question is replaced by the full one).
 function removeAnswer(id) {
   const item = byId.get(id);
@@ -495,7 +643,7 @@ function drawAnswer() {
       lastHtml = '';
     } else {
       more = revealStep(item);
-      const html = md(item.text.slice(0, item.shown));
+      const html = md(tidy(item.text.slice(0, item.shown)));
       if (html !== lastHtml) {
         lastHtml = html;
         $('ovA').innerHTML = html;
@@ -514,6 +662,60 @@ function drawAnswer() {
 function renderAnswer() {
   if (!answerRaf) answerRaf = requestAnimationFrame(drawAnswer);
 }
+
+// Slow, smooth scrolling for long answers. Each press (or each key-repeat while the shortcut is
+// held) moves the target a little; the view glides towards it at a fixed, readable speed
+// (time-based, so the same on 60 Hz and 144 Hz screens) instead of jumping.
+const SCROLL_STEP = 60; // px added per press / repeat
+const SCROLL_SPEED = 220; // px per second, at most
+const SCROLL_LEAD = 90; // while held, the target stays at most this far ahead of the view
+const scroller = { target: null, pos: 0, raf: 0, last: 0 };
+
+function slowScroll(dy) {
+  const el = $('ovCard');
+  const max = el.scrollHeight - el.clientHeight;
+  if (max <= 0) return;
+  if (scroller.target === null) {
+    scroller.pos = el.scrollTop;
+    scroller.target = el.scrollTop;
+  }
+  // holding the key keeps adding; cap how far ahead it gets so it stops soon after release
+  const ahead = Math.max(-SCROLL_LEAD, Math.min(SCROLL_LEAD, scroller.target - scroller.pos + dy));
+  scroller.target = Math.max(0, Math.min(max, scroller.pos + ahead));
+  if (scroller.raf) return;
+  scroller.last = performance.now();
+  const step = (now) => {
+    const dt = Math.min(64, now - scroller.last);
+    scroller.last = now;
+    const diff = scroller.target - scroller.pos;
+    if (Math.abs(diff) < 0.5) {
+      el.scrollTop = Math.round(scroller.target);
+      scroller.raf = 0;
+      scroller.target = null;
+      return;
+    }
+    // ease in the last few pixels, otherwise a steady speed
+    const move = Math.min(Math.abs(diff), Math.max((SCROLL_SPEED * dt) / 1000 * Math.min(1, Math.abs(diff) / 20), 0.5));
+    scroller.pos += Math.sign(diff) * move;
+    el.scrollTop = Math.round(scroller.pos);
+    scroller.raf = requestAnimationFrame(step);
+  };
+  scroller.raf = requestAnimationFrame(step);
+}
+
+// Press and hold a scroll button to keep scrolling slowly.
+function holdToScroll(btn, dir) {
+  let timer = null;
+  const stop = () => clearInterval(timer);
+  btn.onmousedown = () => {
+    slowScroll(dir * SCROLL_STEP);
+    stop();
+    timer = setInterval(() => slowScroll(dir * 16), 60);
+  };
+  btn.onmouseup = stop;
+  btn.onmouseleave = stop;
+}
+
 
 function showAnswer(i) {
   if (i < 0 || i >= answers.length) return;
@@ -560,7 +762,7 @@ api.onAiDone(({ requestId, text, aborted }) => {
     byId.delete(item.id);
     if (current >= answers.length) current = answers.length - 1;
   } else if (sess && !aborted) {
-    sess.answers.push({ id: item.id, kind: item.kind, question: item.question, text: item.text, t: item.t, rating: 0 });
+    sess.answers.push({ id: item.id, kind: item.kind, question: item.question, text: tidy(item.text), t: item.t, rating: 0 });
   }
   if (live.activeAnswerId === requestId) live.activeAnswerId = null;
   renderAnswer();
@@ -766,6 +968,7 @@ function populateVoices() {
   const sel = $('mockVoice');
   const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
   sel.innerHTML = voices.map((v) => `<option>${esc(v.name)}</option>`).join('') || '<option>System default</option>';
+  refreshSelects();
 }
 
 // ---------------------------------------------------------------- session lifecycle
@@ -1100,7 +1303,7 @@ async function init() {
   $('btnEndFromDash').onclick = endSession;
 
   ['sHideShare', 'sHideTaskbar', 'sTheme'].forEach((id) => ($(id).onchange = () => autosaveFields()));
-  ['sGemini', 'sAnthropic', 'sDeepgram'].forEach((id) => ($(id).onchange = () => autosaveFields('API key saved')));
+  ['sGroq', 'sGemini', 'sAnthropic', 'sDeepgram'].forEach((id) => ($(id).onchange = () => autosaveFields('API key saved')));
   for (const id of ['sOpacity', 'ovOpacity']) {
     $(id).oninput = () => {
       const v = Number($(id).value);
@@ -1117,6 +1320,9 @@ async function init() {
   $('oChat').onclick = () => toggleChat();
   $('oMockDone').onclick = submitMockAnswer;
   $('oEnd').onclick = endSession;
+  $('oHide').onclick = () => api.minimize(); // hides; Ctrl+Q brings it back
+  holdToScroll($('oScrollUp'), -1);
+  holdToScroll($('oScrollDown'), 1);
   $('oCollapse').onclick = () => {
     const c = $('overlay').classList.toggle('collapsed');
     $('oCollapse').innerHTML = icon(c ? 'chev-down' : 'collapse');
@@ -1185,7 +1391,7 @@ async function init() {
   };
   $('oCopy').onclick = () => {
     const item = answers[current];
-    if (item) navigator.clipboard.writeText(item.text).then(() => toast('Copied', 'success', 1200));
+    if (item) navigator.clipboard.writeText(tidy(item.text)).then(() => toast('Copied', 'success', 1200));
   };
   $('oUp').onclick = () => rate(1);
   $('oDown').onclick = () => rate(-1);
@@ -1201,8 +1407,8 @@ async function init() {
     else if (k === 'clear') clearAnswers();
     else if (k === 'prev') showAnswer(current - 1);
     else if (k === 'next') showAnswer(current + 1);
-    else if (k === 'scroll-up') $('ovCard').scrollBy({ top: -140, behavior: 'smooth' });
-    else if (k === 'scroll-down') $('ovCard').scrollBy({ top: 140, behavior: 'smooth' });
+    else if (k === 'scroll-up') slowScroll(-SCROLL_STEP);
+    else if (k === 'scroll-down') slowScroll(SCROLL_STEP);
   });
   api.onClickThrough((on) => {
     $('oClickThrough').classList.toggle('active', on);
@@ -1211,6 +1417,10 @@ async function init() {
 
   if (window.speechSynthesis) speechSynthesis.onvoiceschanged = populateVoices;
   populateVoices();
+  // stealth: in-page dropdowns, no tooltips, no autofill popups (all would appear in a screen share)
+  $$('select').forEach(enhanceSelect);
+  $$('input').forEach((i) => (i.autocomplete = 'off'));
+  startTooltipStripper();
   setMode('interview');
   await loadSettingsIntoForms();
   const info = await api.appInfo();

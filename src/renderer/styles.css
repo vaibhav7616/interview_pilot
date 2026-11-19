@@ -87,6 +87,11 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Stealth: the mouse pointer is part of a screen share. If it turned into a hand, I-beam or
+   move cursor over the (invisible) overlay, the other side would see it change over "nothing".
+   So the pointer stays the normal arrow everywhere in the app. */
+*, *::before, *::after { cursor: default !important; }
 html, body {
   margin: 0; height: 100%; overflow: hidden; background: transparent;
   font: 400 13px/1.5 var(--font); color: var(--text);
@@ -336,8 +341,7 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 5px; border-radius: v
   display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 12px;
   background: var(--ov-bg); border: 1px solid var(--ov-line); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
-.ov-main { -webkit-app-region: drag; }
-.ov-main button, .ov-main .ov-inds { -webkit-app-region: no-drag; }
+/* no free dragging: the overlay moves between three fixed positions with Ctrl+< / Ctrl+> */
 .ov-panel { border-radius: 12px; background: var(--ov-panel); border: 1px solid var(--ov-line); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
 .ov-body { display: flex; flex-direction: column; gap: 6px; }
 .ov.collapsed .ov-body { display: none; }
@@ -445,6 +449,39 @@ kbd { display: inline-block; min-width: 20px; padding: 1px 5px; border-radius: v
 .ov-menu-row { display: flex; align-items: center; gap: 8px; }
 .ov-switch { color: var(--ov-text); font-weight: 600; }
 .ov-switch .track { border-color: var(--ov-muted); }
+
+/* ---------- Custom dropdowns ----------
+   Native <select> lists open in a separate OS window that screen capture protection does not
+   cover (verified: the open list showed up in a capture). These are drawn inside the page. */
+select.cs-native { display: none !important; }
+.cs { position: relative; width: 100%; min-width: 0; }
+.row > .cs { width: 220px; flex: none; }
+.cs-btn {
+  width: 100%; display: flex; align-items: center; gap: 6px; text-align: left;
+  font: 13px var(--font); color: var(--text); background: var(--input);
+  border: 1px solid var(--border); border-bottom-color: var(--border-strong); border-radius: var(--r);
+  padding: 7px 10px; outline: none;
+}
+.cs-btn:hover { border-color: var(--border-strong); }
+.cs.open .cs-btn, .cs-btn:focus-visible { border-bottom: 1px solid var(--accent); box-shadow: inset 0 -1px 0 var(--accent); }
+.cs-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-btn svg { width: 14px; height: 14px; color: var(--muted); }
+.cs-list {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 50; max-height: 260px; overflow-y: auto;
+  padding: 4px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+}
+.cs-list.up { top: auto; bottom: calc(100% + 4px); }
+.cs-group { padding: 6px 8px 2px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.cs-opt { padding: 6px 8px; border-radius: var(--r-sm); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-opt:hover, .cs-opt.active { background: var(--surface-hover); }
+.cs-opt.selected { color: var(--accent); font-weight: 600; }
+/* in the overlay the window is only as tall as its content, so the list opens in the flow */
+.ov .cs-list { position: static; margin-top: 4px; max-height: 200px; background: #2a2a2d; border-color: var(--ov-line); }
+.ov .cs-btn { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--ov-line); color: var(--ov-text); height: 30px; padding: 4px 8px; font-size: 12.5px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.ov .cs-opt { color: var(--ov-text); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.ov .cs-opt:hover, .ov .cs-opt.active { background: var(--ov-btn-hover); }
+.ov .cs-opt.selected { color: #7fb0ff; font-weight: 600; }
+.ov .cs-group { color: var(--ov-muted); }
 
 /* ---------- Toast ---------- */
 .toast {

@@ -50,6 +50,7 @@
         <symbol id="i-thumb-down" viewBox="0 0 24 24"><path d="M7 14V4H4v10zM7 14l4 7a2 2 0 0 0 2.5-2.4L12.6 14H18a2 2 0 0 0 2-2.3l-1.2-6A2 2 0 0 0 16.8 4H7" /></symbol>
         <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7M6 9.5V20h4.5v-5h3v5H18V9.5" /></symbol>
         <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.4-4.4" /></symbol>
+        <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.1A9.7 9.7 0 0 1 12 6c5 0 8.5 4.5 9.5 6a17 17 0 0 1-2.6 3.2M6.6 7.6A16 16 0 0 0 2.5 12c1 1.5 4.5 6 9.5 6a9.3 9.3 0 0 0 4.4-1.1" /><path d="M9.9 10a3 3 0 0 0 4.1 4.1" /></symbol>
         <symbol id="i-pointer" viewBox="0 0 24 24"><path d="M5 3.5 18.5 10l-6 1.8-2.3 6.2z" /></symbol>
       </defs>
     </svg>
@@ -61,7 +62,7 @@
         <span class="app-name">Interview Pilot</span>
         <span class="status" id="status"><span class="status-dot"></span><span id="statusText">Ready</span><span class="status-timer hidden" id="timer">00:00</span></span>
         <div class="win-controls">
-          <button class="win-btn" id="btnHide" title="Hide  (Ctrl+Shift+Space)"><svg><use href="#i-minus" /></svg></button>
+          <button class="win-btn" id="btnHide" title="Hide  (Ctrl+Q to show again)"><svg><use href="#i-minus" /></svg></button>
           <button class="win-btn close" id="btnQuit" title="Quit"><svg><use href="#i-x" /></svg></button>
         </div>
       </header>
@@ -91,7 +92,7 @@
 
                 <div class="callout hidden" id="keysCallout">
                   <svg><use href="#i-key" /></svg>
-                  <div><strong>Connect your API keys</strong><span>A Deepgram key plus a key for your chosen AI model (Gemini or Anthropic) are required before starting a session.</span></div>
+                  <div><strong>Connect your API keys</strong><span>A Deepgram key plus a key for your chosen AI model (Groq, Gemini or Anthropic) are required before starting a session.</span></div>
                   <button class="btn btn-sm" id="btnGoSettings">Open settings</button>
                 </div>
 
@@ -198,7 +199,11 @@
                   <div class="group-title">Connections</div>
                   <div class="rows">
                     <div class="row stacked">
-                      <div class="row-text"><span class="row-label">Gemini API key</span><span class="row-desc">Free from aistudio.google.com — used when a Gemini model is selected</span></div>
+                      <div class="row-text"><span class="row-label">Groq API key</span><span class="row-desc">Free from console.groq.com — fastest answers (used when a Groq model is selected)</span></div>
+                      <input id="sGroq" type="password" placeholder="gsk_…" spellcheck="false" />
+                    </div>
+                    <div class="row stacked">
+                      <div class="row-text"><span class="row-label">Gemini API key</span><span class="row-desc">Free from aistudio.google.com — Gemini models, automatic backup for Groq, PDF import and AI notes</span></div>
                       <input id="sGemini" type="password" placeholder="Paste key" spellcheck="false" />
                     </div>
                     <div class="row stacked">
@@ -247,7 +252,7 @@
                       <span class="switch"><input type="checkbox" id="sHideShare" /><span class="track"><span class="thumb"></span></span></span>
                     </label>
                     <label class="row switch-row">
-                      <div class="row-text"><span class="row-label">Hide from taskbar</span><span class="row-desc">Use Ctrl+Shift+Space to show the window</span></div>
+                      <div class="row-text"><span class="row-label">Hide from taskbar</span><span class="row-desc">Always hidden during a session; this also hides it when idle. Ctrl+Q shows the window</span></div>
                       <span class="switch"><input type="checkbox" id="sHideTaskbar" /><span class="track"><span class="thumb"></span></span></span>
                     </label>
                     <div class="row">
@@ -268,16 +273,18 @@
                 <div class="group">
                   <div class="group-title">Keyboard shortcuts (during a session)</div>
                   <div class="rows">
-                    <div class="shortcut"><span>Show or hide window (always)</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div>
+                    <div class="shortcut"><span>Hide / show the window (always; session keeps running)</span><kbd>Ctrl</kbd><kbd>Q</kbd></div>
+                    <div class="shortcut"><span>Hide / show the window (alternative)</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Space</kbd></div>
                     <div class="shortcut"><span>Answer now</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></div>
                     <div class="shortcut"><span>Screenshot and solve</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>S</kbd></div>
                     <div class="shortcut"><span>Chat (type a question)</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>K</kbd></div>
                     <div class="shortcut"><span>Previous / next answer</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>←</kbd><kbd>→</kbd></div>
-                    <div class="shortcut"><span>Scroll answer</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>↑</kbd><kbd>↓</kbd></div>
+                    <div class="shortcut"><span>Scroll answer slowly (hold to keep scrolling)</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>↑</kbd><kbd>↓</kbd></div>
                     <div class="shortcut"><span>Clear answers</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Backspace</kbd></div>
                     <div class="shortcut"><span>Auto-answer on / off</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>A</kbd></div>
                     <div class="shortcut"><span>Click-through on / off</span><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>X</kbd></div>
-                    <div class="shortcut"><span>Move overlay</span><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>Shift</kbd><kbd>Arrows</kbd></div>
+                    <div class="shortcut"><span>Move answer box left (right corner → middle → left corner)</span><kbd>Ctrl</kbd><kbd>&lt;</kbd></div>
+                    <div class="shortcut"><span>Move answer box right (left corner → middle → right corner)</span><kbd>Ctrl</kbd><kbd>&gt;</kbd></div>
                   </div>
                 </div>
               </div>
@@ -301,7 +308,7 @@
         <button class="ov-btn" id="oChat" title="Type a question privately">Chat<kbd>Ctrl ⇧ K</kbd></button>
         <button class="ov-btn ov-primary hidden" id="oMockDone">Done answering</button>
         <span class="ov-flex"></span>
-        <span class="ov-icon ov-drag" title="Drag to move"><svg><use href="#i-move" /></svg></span>
+        <button class="ov-icon" id="oHide" title="Hide (Ctrl+Q to bring it back) — the session keeps running"><svg><use href="#i-eye-off" /></svg></button>
         <button class="ov-icon" id="oCollapse" title="Collapse"><svg><use href="#i-collapse" /></svg></button>
         <button class="ov-icon" id="oMenu" title="More"><svg><use href="#i-more" /></svg></button>
         <button class="ov-end" id="oEnd" title="End the session and save it">End</button>
@@ -348,6 +355,8 @@
             <span class="ov-pos" id="ovPos"></span>
             <span class="ov-flex"></span>
             <span class="ov-auto" id="ovAutoBadge"></span>
+            <button class="ov-icon sm" id="oScrollUp" aria-label="Scroll up slowly (hold) — Ctrl+Alt+Up"><svg><use href="#i-chev-up" /></svg></button>
+            <button class="ov-icon sm" id="oScrollDown" aria-label="Scroll down slowly (hold) — Ctrl+Alt+Down"><svg><use href="#i-chev-down" /></svg></button>
             <button class="ov-btn sm" id="oClearA" title="Clear answers (Ctrl+Shift+Backspace)">Clear<kbd>Ctrl ⇧ ⌫</kbd></button>
             <button class="ov-icon" id="oExpand" title="Expand"><svg><use href="#i-expand" /></svg></button>
           </div>
